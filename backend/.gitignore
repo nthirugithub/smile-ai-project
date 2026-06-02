@@ -1,0 +1,54 @@
+# Virtual Environment
+/.venv
+.venv
+.venv/**
+**/.venv/
+venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Reports
+reports/
+
+# Uploads
+uploads/
+
+# Temporary files
+temp.jpg
+
+# Model files
+*.pkl
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Flutter
+build/
+.dart_tool/
+
+# Dataset
+dataset/
+raw_dataset/
+
+# Images
+*.jpg
+*.png
+*.jpeg
+
+# Database
+*.db
