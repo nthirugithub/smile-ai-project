@@ -13,10 +13,10 @@ class FaceMesh3D:
 
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=True,
-            max_num_faces=2,
+            max_num_faces=1,
             refine_landmarks=True,
-            min_detection_confidence=0.6,
-            min_tracking_confidence=0.6
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.7
         )
 
         self.mp_drawing = mp.solutions.drawing_utils
@@ -210,12 +210,15 @@ class FaceMesh3D:
         head_tilt = self.estimate_head_tilt(
             landmark_points
         )
+        if abs(head_tilt) > 15:
+            print("Head tilt too large")
+            return None
 
         # ---------------------------------------------
         # FACE SIZE VALIDATION
         # ---------------------------------------------
 
-        if largest_size < 40000:
+        if largest_size < 60000:
 
             print(
                 "Face too small for reliable analysis"
@@ -228,7 +231,7 @@ class FaceMesh3D:
         # ---------------------------------------------
 
         blur_quality = min(
-            blur_score / 120,
+            blur_score / 180,
             1.0
         )
 
@@ -296,7 +299,7 @@ class FaceMesh3D:
         # SAVE OUTPUT
         # ---------------------------------------------
 
-        output_path = "reports/mesh_output.jpg"
+        output_path = f"reports/mesh_output_{os.getpid()}.jpg"
 
         os.makedirs(
             "reports",

@@ -27,7 +27,7 @@ class FeatureExtractor:
 
     # MediaPipe FaceMesh landmark indices commonly used in smile analysis
     FOREHEAD = 10
-    NOSE_TIP = 1
+    NOSE_TIP = 168
     CHIN = 152
 
     LEFT_FACE = 234
@@ -213,14 +213,18 @@ class FeatureExtractor:
     # Feature 8: Buccal corridor
     # -----------------------------
     def calculate_buccal_corridor(self) -> float:
-        """
-        Buccal corridor proxy:
-        larger smile width -> smaller visible side space.
-        Normalized as 1 - smile_width_ratio.
-        """
+
         smile_width_ratio = self.calculate_smile_width()
-        corridor = 1.0 - smile_width_ratio
-        return round(self._clamp(corridor, 0.0, 1.0), 4)
+
+        corridor = max(
+            0.0,
+             min(
+                1.0,
+                (0.70 - smile_width_ratio) / 0.70
+            )
+        )
+
+        return round(corridor, 4)
 
     # -----------------------------
     # Optional quality score
@@ -242,15 +246,19 @@ class FeatureExtractor:
 
         geometry_score = 1.0 - min((midline + symmetry) / 0.50, 1.0)
 
-        score = 0.6 * ratio_score + 0.4 * geometry_score
+        score = (
+            0.4 * ratio_score
+            + 0.3 * geometry_score
+            + 0.3 * (1.0 - min(abs(self.calculate_smile_arc()) / 0.15, 1.0))
+        )
         return round(self._clamp(score, 0.0, 1.0), 4)
 
     # -----------------------------
     # Main output
     # -----------------------------
     def extract_all_features(self) -> Dict[str, float]:
-        return {
-            # Keep these keys stable for downstream training/prediction
+
+        features = {
             "smile_width": self.calculate_smile_width(),
             "lip_opening": self.calculate_lip_opening(),
             "face_ratio": self.calculate_face_ratio(),
@@ -259,9 +267,14 @@ class FeatureExtractor:
             "smile_arc": self.calculate_smile_arc(),
             "gingival_display": self.calculate_gingival_display(),
             "buccal_corridor": self.calculate_buccal_corridor(),
-            # Useful for filtering/debugging
-            "quality_score": self.calculate_quality_score(),
+            "quality_score": 1.0,
         }
+
+        for key, value in features.items():
+            if isinstance(value, float) and math.isnan(value):
+                features[key] = 0.0
+
+        return features
 
     # -----------------------------
     # Visual debugging overlay

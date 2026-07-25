@@ -53,13 +53,11 @@ FEATURE_COLUMNS = [
     "buccal_corridor"
 ]
 
-
 # =====================================================
 # CREATE REPORTS FOLDER
 # =====================================================
 
 os.makedirs("reports", exist_ok=True)
-
 
 # =====================================================
 # LOAD MODEL
@@ -72,7 +70,6 @@ model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 
 mesh_detector = FaceMesh3D()
-
 
 # =====================================================
 # RESULTS

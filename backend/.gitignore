@@ -18,8 +18,6 @@ uploads/
 # Temporary files
 temp.jpg
 
-# Model files
-*.pkl
 
 # VS Code
 .vscode/

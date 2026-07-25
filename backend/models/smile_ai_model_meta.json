@@ -1,10 +1,10 @@
 {
-  "training_date": "2026-05-30 21:35:43",
-  "model_name": "ExtraTrees",
-  "cv_accuracy": 0.8251572327044027,
-  "test_accuracy": 0.8592964824120602,
-  "balanced_accuracy": 0.8585714285714285,
-  "weighted_f1": 0.8582514706427957,
+  "training_date": "2026-07-16 13:15:51",
+  "model_name": "RandomForest",
+  "cv_accuracy": 0.5708994708994709,
+  "test_accuracy": 0.5909090909090909,
+  "balanced_accuracy": 0.5296296296296296,
+  "weighted_f1": 0.586907114624506,
   "feature_columns": [
     "smile_width",
     "lip_opening",
@@ -18,9 +18,8 @@
   "label_names": {
     "0": "Normal",
     "1": "Mild",
-    "2": "Moderate",
-    "3": "Severe"
+    "2": "Moderate"
   },
-  "average_confidence": 0.7865585728116516,
-  "dataset_size": 994
+  "average_confidence": 0.6130374795025516,
+  "dataset_size": 110
 }

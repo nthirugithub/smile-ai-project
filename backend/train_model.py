@@ -14,7 +14,6 @@ from sklearn.ensemble import (
     ExtraTreesClassifier
 )
 
-from sklearn.impute import SimpleImputer
 
 from sklearn.metrics import (
     accuracy_score,
@@ -39,9 +38,7 @@ from sklearn.calibration import CalibratedClassifierCV
 # PATHS
 # =====================================================
 
-DATASET_PATH = "dataset/smile_dataset.csv"
-
-LABELED_DATASET_PATH = "dataset/smile_dataset_labeled.csv"
+DATASET_PATH = "dataset/doctor_dataset_labeled.csv"
 
 MODEL_PATH = "models/smile_ai_model.pkl"
 
@@ -87,48 +84,8 @@ LABEL_NAMES = {
     0: "Normal",
     1: "Mild",
     2: "Moderate",
-    3: "Severe",
 }
 
-
-# =====================================================
-# NORMALIZATION
-# =====================================================
-
-def minmax(series):
-
-    series = pd.to_numeric(series, errors="coerce")
-
-    smin = series.min()
-    smax = series.max()
-
-    if pd.isna(smin) or pd.isna(smax) or smax == smin:
-        return pd.Series(np.zeros(len(series)), index=series.index)
-
-    return (series - smin) / (smax - smin)
-
-
-# =====================================================
-# OUTLIER CLIPPING
-# =====================================================
-
-def clip_outliers(df, columns):
-
-    df = df.copy()
-
-    for col in columns:
-
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
-
-        iqr = q3 - q1
-
-        lower = q1 - 1.5 * iqr
-        upper = q3 + 1.5 * iqr
-
-        df[col] = df[col].clip(lower, upper)
-
-    return df
 
 
 # =====================================================
@@ -149,59 +106,9 @@ def load_dataset(path):
 
     df = df.dropna(subset=FEATURE_COLUMNS)
 
-    df = clip_outliers(df, FEATURE_COLUMNS)
-
     df = df.reset_index(drop=True)
 
     return df
-
-
-# =====================================================
-# WEAK LABEL GENERATION
-# =====================================================
-
-def build_weak_labels(df):
-
-    work = df.copy()
-
-    work["symmetry_n"] = minmax(work["smile_symmetry"])
-
-    work["midline_n"] = minmax(work["midline_deviation"])
-
-    work["gingival_n"] = minmax(work["gingival_display"])
-
-    work["buccal_issue_n"] = 1.0 - minmax(work["buccal_corridor"])
-
-    work["arc_issue_n"] = minmax(work["smile_arc"].abs())
-
-    work["face_ratio_issue_n"] = minmax(
-        (work["face_ratio"] - work["face_ratio"].median()).abs()
-    )
-
-    work["smile_width_n"] = minmax(work["smile_width"])
-
-    work["lip_opening_n"] = minmax(work["lip_opening"])
-
-    # Clinical-style weighted severity score
-
-    work["severity_score"] = (
-        0.28 * work["midline_n"]
-        + 0.26 * work["symmetry_n"]
-        + 0.16 * work["gingival_n"]
-        + 0.12 * work["buccal_issue_n"]
-        + 0.08 * work["arc_issue_n"]
-        + 0.05 * work["face_ratio_issue_n"]
-        + 0.03 * work["smile_width_n"]
-        + 0.02 * work["lip_opening_n"]
-    )
-
-    work["severity_label"] = pd.qcut(
-        work["severity_score"].rank(method="first"),
-        q=4,
-        labels=False
-    ).astype(int)
-
-    return work
 
 
 # =====================================================
@@ -211,21 +118,29 @@ def build_weak_labels(df):
 def make_models():
 
     return {
+
         "ExtraTrees": ExtraTreesClassifier(
-            n_estimators=500,
+            n_estimators=300,
+            max_depth=None,
+            min_samples_split=2,
+            min_samples_leaf=1,
+            max_features="sqrt",
+            class_weight="balanced",
             random_state=42,
-            class_weight="balanced_subsample",
-            min_samples_leaf=2,
             n_jobs=-1,
         ),
 
         "RandomForest": RandomForestClassifier(
-            n_estimators=500,
+            n_estimators=300,
+            max_depth=None,
+            min_samples_split=2,
+            min_samples_leaf=1,
+            max_features="sqrt",
+            class_weight="balanced",
             random_state=42,
-            class_weight="balanced_subsample",
-            min_samples_leaf=2,
             n_jobs=-1,
         ),
+
     }
 
 
@@ -243,13 +158,13 @@ def main():
 
     df = load_dataset(DATASET_PATH)
 
-    df = build_weak_labels(df)
+    df = df.dropna(subset=["clinical_label"])
 
-    df.to_csv(LABELED_DATASET_PATH, index=False)
+    df["clinical_label"] = df["clinical_label"].astype(int)
 
     X = df[FEATURE_COLUMNS]
 
-    y = df["severity_label"]
+    y = df["clinical_label"]
 
     # ---------------------------------
 
@@ -298,7 +213,7 @@ def main():
             X_train_scaled,
             y_train,
             cv=skf,
-            scoring="accuracy",
+            scoring="balanced_accuracy",
             n_jobs=-1,
         )
 
@@ -381,10 +296,13 @@ def main():
             for i in sorted(LABEL_NAMES.keys())
         ],
         digits=4,
+        zero_division=0
     )
 
     print("\nClassification Report:")
     print(report)
+    print("\nTraining Distribution:")
+    print(y.value_counts())
 
     # ---------------------------------
 
@@ -523,6 +441,10 @@ def main():
 
     # ---------------------------------
 
+    #print("\nFeature Importances:")
+   # for feature, importance in zip(FEATURE_COLUMNS, best_model.feature_importances_):
+    #    print(f"{feature}: {importance:.4f}")
+
     print("\n======================================")
     print("TRAINING COMPLETED SUCCESSFULLY")
     print("======================================")
@@ -538,7 +460,6 @@ def main():
     print(f"Feature importance saved: {FEATURE_IMPORTANCE_PNG}")
 
     print(f"Training report saved: {TRAINING_REPORT_TXT}")
-
 
 # =====================================================
 

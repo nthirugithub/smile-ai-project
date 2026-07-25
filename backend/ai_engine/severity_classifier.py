@@ -117,11 +117,11 @@ class SeverityClassifier:
         # -------------------------------------------------
         # Severity mapping
         # -------------------------------------------------
-        if weighted_score < 18:
+        if weighted_score < 12:
             severity = "Normal"
-        elif weighted_score < 38:
+        elif weighted_score < 22:
             severity = "Mild"
-        elif weighted_score < 60:
+        elif weighted_score < 40:
             severity = "Moderate"
         else:
             severity = "Severe"
@@ -141,8 +141,83 @@ class SeverityClassifier:
             distance = weighted_score - 60.0
 
         confidence = 0.50 + 0.50 * self._clamp(distance / 18.0, 0.0, 1.0)
-        confidence *= self._clamp(quality_score, 0.55, 1.0)
+        confidence *= self._clamp(
+            quality_score * 1.05,
+            0.60,
+            1.0
+        )
         confidence = round(self._clamp(confidence, 0.50, 0.99), 4)
+
+        assessment = {
+            "midline": {
+                "value": round(midline_deviation, 4),
+                "threshold": 0.020,
+                "issue": midline_penalty > 0,
+                "penalty": round(midline_penalty * 24.0, 2),
+                "finding": "Midline deviation elevated",
+            },
+
+            "symmetry": {
+                "value": round(smile_symmetry, 4),
+                "threshold": 0.010,
+                "issue": symmetry_penalty > 0,
+                "penalty": round(symmetry_penalty * 22.0, 2),
+                "finding": "Smile asymmetry observed",
+            },
+
+            "gingival_display": {
+                "value": round(gingival_display, 4),
+                "threshold": 0.012,
+                "issue": gingival_penalty > 0,
+                "penalty": round(gingival_penalty * 16.0, 2),
+                "finding": "Gingival display increased",
+            },
+
+            "smile_arc": {
+                "value": round(smile_arc, 4),
+                "threshold": "0.015 ± 0.030",
+                "issue": arc_penalty > 0.30,
+                "penalty": round(arc_penalty * 10.0, 2),
+                "finding": "Smile arc outside preferred range",
+            },
+
+            "buccal_corridor": {
+                "value": round(buccal_corridor, 4),
+                 "threshold": 0.50,
+                "issue": buccal_penalty > 0,
+                "penalty": round(buccal_penalty * 10.0, 2),
+                "finding": "Narrow smile pattern detected",
+            },
+            "smile_width": {
+                "value": round(smile_width, 4),
+                "threshold": "0.42-0.62",
+                "issue": width_penalty > 0,
+                "penalty": round(width_penalty * 8.0, 2),
+                "finding": "Smile width outside preferred range",
+            },
+            "face_ratio": {
+                "value": round(face_ratio, 4),
+                "threshold": "0.72-1.05",
+                "issue": ratio_penalty > 0,
+                "penalty": round(ratio_penalty * 5.0, 2),
+                "finding": "Facial proportion outside preferred range",
+            },
+            "lip_opening": {
+                "value": round(lip_opening, 4),
+                "threshold": "0.03-0.13",
+                "issue": lip_penalty > 0,
+                "penalty": round(lip_penalty * 5.0, 2),
+                "finding": "Lip opening outside preferred range",
+            },
+
+            "image_quality": {
+                "value": round(quality_score, 4),
+                "threshold": 0.60,
+                "issue": quality_score < 0.60,
+                "penalty": 0.0,
+                "finding": "Low image quality may reduce reliability",
+            },
+        }
 
         # -------------------------------------------------
         # Explanatory details
@@ -151,47 +226,29 @@ class SeverityClassifier:
             "smile_width_penalty": round(width_penalty * 8.0, 2),
             "lip_opening_penalty": round(lip_penalty * 5.0, 2),
             "face_ratio_penalty": round(ratio_penalty * 5.0, 2),
-            "midline_penalty": round(midline_penalty * 24.0, 2),
-            "smile_symmetry_penalty": round(symmetry_penalty * 22.0, 2),
-            "smile_arc_penalty": round(arc_penalty * 10.0, 2),
-            "gingival_display_penalty": round(gingival_penalty * 16.0, 2),
-            "buccal_corridor_penalty": round(buccal_penalty * 10.0, 2),
+            "midline_penalty": assessment["midline"]["penalty"],
+            "smile_symmetry_penalty": assessment["symmetry"]["penalty"],
+            "smile_arc_penalty": assessment["smile_arc"]["penalty"],
+            "gingival_display_penalty": assessment["gingival_display"]["penalty"],
+            "buccal_corridor_penalty": assessment["buccal_corridor"]["penalty"],
             "quality_score": round(quality_score, 4),
         }
 
-        findings = []
-        if midline_deviation > 0.020:
-            findings.append("Midline deviation elevated")
-        if smile_symmetry > 0.010:
-            findings.append("Smile asymmetry observed")
-        if gingival_display > 0.012:
-            findings.append("Gingival display increased")
-        if buccal_corridor > 0.50:
-            findings.append("Narrow smile pattern detected")
-        if abs(smile_arc - 0.015) > 0.030:
-            findings.append("Smile arc outside preferred range")
-        if quality_score < 0.60:
-            findings.append("Low image quality may reduce reliability")
+        findings = [
+            item["finding"]
+            for item in assessment.values()
+            if item["issue"]
+        ]
 
         if not findings:
             findings.append("Smile proportions balanced")
-
-        recommendation = self._build_recommendation(severity, findings)
 
         return {
             "severity": severity,
             "score": weighted_score,
             "confidence": confidence,
+            "assessment": assessment,
             "details": details,
             "clinical_findings": findings,
-            "recommendation": recommendation,
-        }
 
-    def _build_recommendation(self, severity: str, findings: list[str]) -> str:
-        if severity == "Normal":
-            return "Smile aesthetics within acceptable range."
-        if severity == "Mild":
-            return "Mild orthodontic consultation recommended."
-        if severity == "Moderate":
-            return "Orthodontic evaluation advised for smile correction."
-        return "Comprehensive orthodontic treatment planning recommended."
+        }
