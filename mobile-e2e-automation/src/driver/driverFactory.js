@@ -43,6 +43,15 @@ class DriverFactory {
       this.driver = await remote(options);
       this.currentContext = automationType;
       logger.info(`Appium session successfully launched! Session ID: ${this.driver.sessionId}`);
+      
+      if (automationType === 'Flutter') {
+        try {
+          await this.driver.execute('flutter:setFrameSync', false);
+          logger.info('Disabled Flutter Driver frame sync for reliable background interaction.');
+        } catch (syncErr) {
+          logger.warn(`setFrameSync notice: ${syncErr.message}`);
+        }
+      }
       return this.driver;
     } catch (error) {
       logger.error(`Failed to launch Appium session with ${automationType}: ${error.message}`);

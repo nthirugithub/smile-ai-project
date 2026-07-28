@@ -29,7 +29,12 @@ class _AnimatedGlowState extends State<AnimatedGlow>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20),
-    )..repeat(reverse: true);
+    );
+
+    const isTestMode = bool.fromEnvironment('DISABLE_ANIMATIONS', defaultValue: false);
+    if (!isTestMode) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override

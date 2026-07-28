@@ -9,10 +9,14 @@ class ApiService {
   // -----------------------------------
 
   static String get baseUrl {
+    const envUrl = String.fromEnvironment('BACKEND_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
     if (kIsWeb) {
       return 'http://127.0.0.1:5000';
     } else {
-      return 'http://192.168.43.151:5000';
+      return 'http://10.0.2.2:5000';
     }
   }
 

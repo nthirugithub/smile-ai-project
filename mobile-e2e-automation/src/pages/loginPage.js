@@ -11,6 +11,7 @@ class LoginPage extends BasePage {
     this.passwordInput = this.finder.byValueKey('password_input_key');
     this.loginButton = this.finder.byValueKey('login_button_key');
     this.logoutButton = this.finder.byValueKey('logout_button_key');
+    this.signUpLink = this.finder.byText('Sign Up');
     
     // Text locators matching actual Flutter app screens
     this.emailInputText = this.finder.byText('Email Address');
@@ -52,6 +53,13 @@ class LoginPage extends BasePage {
     if (email) await this.enterEmail(email);
     if (password) await this.enterPassword(password);
     await this.clickLogin();
+  }
+
+  /**
+   * Navigate to Register screen via Sign Up link
+   */
+  async goToSignUp() {
+    await this.click(this.signUpLink, 'Sign Up Link');
   }
 
   /**

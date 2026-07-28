@@ -77,6 +77,7 @@ class RegisterCard extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             CustomTextField(
+              key: const ValueKey('register_name_input'),
               label: 'Full Name',
               controller: nameController,
               hintText: 'Dr. Jane Doe',
@@ -86,6 +87,7 @@ class RegisterCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             CustomTextField(
+              key: const ValueKey('register_email_input'),
               label: 'Email Address',
               controller: emailController,
               hintText: 'name@clinic.com',
@@ -96,6 +98,7 @@ class RegisterCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             CustomTextField(
+              key: const ValueKey('register_password_input'),
               label: 'Password',
               controller: passwordController,
               hintText: 'Enter your password',
@@ -114,6 +117,7 @@ class RegisterCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             CustomTextField(
+              key: const ValueKey('register_confirm_password_input'),
               label: 'Confirm Password',
               controller: confirmController,
               hintText: 'Re-enter your password',
@@ -133,6 +137,7 @@ class RegisterCard extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             PrimaryButton(
+              key: const ValueKey('register_button_key'),
               label: 'Create Account',
               onPressed: onRegister,
             ),

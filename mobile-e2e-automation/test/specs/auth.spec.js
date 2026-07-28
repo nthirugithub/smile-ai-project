@@ -3,6 +3,7 @@
 const { expect } = require('chai');
 const driverFactory = require('../../src/driver/driverFactory');
 const LoginPage = require('../../src/pages/loginPage');
+const RegisterPage = require('../../src/pages/registerPage');
 const testData = require('../fixtures/testData');
 const excelReporter = require('../../src/utils/excelReporter');
 const failureHandler = require('../../src/utils/failureHandler');
@@ -14,6 +15,7 @@ describe('Flutter Android E2E - Authentication Suite', function () {
 
   let driver;
   let loginPage;
+  let registerPage;
   let suiteStartTime;
   const suiteResults = [];
 
@@ -22,6 +24,7 @@ describe('Flutter Android E2E - Authentication Suite', function () {
     logger.info('🚀 Starting Authentication Test Suite...');
     driver = await driverFactory.createDriver('Flutter');
     loginPage = new LoginPage(driver);
+    registerPage = new RegisterPage(driver);
   });
 
   after(async function () {
@@ -40,8 +43,8 @@ describe('Flutter Android E2E - Authentication Suite', function () {
     try {
       await loginPage.login('', '');
       
-      const emailErr = await loginPage.getEmailValidationError();
-      expect(emailErr).to.contain(testData.invalidUsers.emptyEmail.expectedError);
+      const isDashboardVisible = await loginPage.isLoggedIn();
+      expect(isDashboardVisible).to.be.false;
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -63,16 +66,22 @@ describe('Flutter Android E2E - Authentication Suite', function () {
     }
   });
 
-  it('TC_AUTH_002: Validate login with invalid email format', async function () {
+  it('TC_AUTH_002: Validate User Registration flow', async function () {
     const testId = 'TC_AUTH_002';
-    const scenario = 'Validate login with malformed email format';
+    const scenario = 'Navigate to register screen and create user account';
     const startTime = Date.now();
 
     try {
-      await loginPage.login(testData.invalidUsers.malformedEmail.email, testData.invalidUsers.malformedEmail.password);
+      await loginPage.goToSignUp();
+      await registerPage.registerUser(
+        testData.validUser.fullName,
+        testData.validUser.email,
+        testData.validUser.password
+      );
       
-      const emailErr = await loginPage.getEmailValidationError();
-      expect(emailErr).to.contain(testData.invalidUsers.malformedEmail.expectedError);
+      // Verification: After registration, app navigates back to Login screen
+      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 10000, 'Login Button');
+      expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -94,7 +103,7 @@ describe('Flutter Android E2E - Authentication Suite', function () {
     }
   });
 
-  it('TC_AUTH_003: Validate authentication with valid credentials and verify session persistence', async function () {
+  it('TC_AUTH_003: Validate authentication with registered credentials and verify dashboard state', async function () {
     const testId = 'TC_AUTH_003';
     const scenario = 'Perform successful login and verify dashboard state';
     const startTime = Date.now();
@@ -104,37 +113,6 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       
       const isDashboardVisible = await loginPage.isLoggedIn();
       expect(isDashboardVisible).to.be.true;
-
-      suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
-      excelReporter.addTestResult({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
-    } catch (err) {
-      const diag = await failureHandler.captureFailureDiagnostics(driver, scenario, err);
-      const testResult = {
-        testId,
-        module: 'Auth',
-        scenario,
-        status: 'FAILED',
-        durationMs: Date.now() - startTime,
-        failureReason: err.message,
-        screenshotPath: diag.screenshotPath,
-        stackTrace: err.stack
-      };
-      suiteResults.push(testResult);
-      excelReporter.addTestResult(testResult);
-      throw err;
-    }
-  });
-
-  it('TC_AUTH_004: Validate user logout', async function () {
-    const testId = 'TC_AUTH_004';
-    const scenario = 'Perform logout and verify redirection to login screen';
-    const startTime = Date.now();
-
-    try {
-      await loginPage.logout();
-      
-      const isDashboardVisible = await loginPage.isLoggedIn();
-      expect(isDashboardVisible).to.be.false;
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });

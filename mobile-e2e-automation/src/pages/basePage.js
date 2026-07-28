@@ -12,31 +12,23 @@ class BasePage {
   }
 
   /**
-   * Safe wait for Flutter element to become visible / rendered
+   * Safe wait for Flutter element to become visible / rendered using flutter:waitFor
    */
   async waitForVisible(finder, timeoutMs = 15000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible...`);
     const serialized = this.finder.serialize(finder);
-    
-    const startTime = Date.now();
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        const isRendered = await this.driver.execute('flutter:checkHealth');
-        if (isRendered) {
-          await this.driver.elementSendKeys(serialized, ''); // touch finder check
-          return true;
-        }
-      } catch (err) {
-        // Continue polling
-      }
-      await this.driver.pause(500);
+    const timeoutInSeconds = Math.max(1, Math.floor(timeoutMs / 1000));
+    try {
+      await this.driver.execute('flutter:waitFor', serialized, timeoutInSeconds);
+      return true;
+    } catch (err) {
+      logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms: ${err.message}`);
+      return false;
     }
-    logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms.`);
-    return false;
   }
 
   /**
-   * Clicks a Flutter widget with strict timeout guard
+   * Clicks a Flutter widget cleanly without Promise.race command flooding
    */
   async click(finder, description = 'Widget', timeoutMs = 15000) {
     logger.step(this.constructor.name, `Click on ${description}`);
@@ -44,17 +36,14 @@ class BasePage {
     
     const serialized = this.finder.serialize(finder);
     try {
-      const clickPromise = this.driver.elementClick(serialized);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error(`Click operation timed out after ${timeoutMs}ms for ${description}`)), timeoutMs)
-      );
-      await Promise.race([clickPromise, timeoutPromise]);
+      await this.driver.execute('flutter:click', serialized);
     } catch (err) {
-      logger.warn(`Flutter elementClick notice for ${description}: ${err.message}. Attempting flutter:click fallback...`);
+      logger.warn(`flutter:click execution fallback notice for ${description}: ${err.message}`);
       try {
-        await this.driver.execute('flutter:click', serialized);
+        await this.driver.elementClick(serialized);
       } catch (fallbackErr) {
-        logger.debug(`Fallback click execution complete for ${description}`);
+        logger.error(`Failed to click ${description}: ${fallbackErr.message}`);
+        throw fallbackErr;
       }
     }
   }
@@ -69,9 +58,14 @@ class BasePage {
     const serialized = this.finder.serialize(finder);
     await this.click(finder, description);
     try {
-      await this.driver.elementSendKeys(serialized, text);
-    } catch (err) {
       await this.driver.execute('flutter:enterText', text);
+    } catch (err) {
+      try {
+        await this.driver.elementSendKeys(serialized, text);
+      } catch (sendErr) {
+        logger.error(`Failed to enter text into ${description}: ${sendErr.message}`);
+        throw sendErr;
+      }
     }
   }
 
@@ -82,22 +76,17 @@ class BasePage {
     logger.info(`Getting text content from ${description}`);
     const serialized = this.finder.serialize(finder);
     try {
-      return await this.driver.getElementText(serialized);
-    } catch (err) {
       return await this.driver.execute('flutter:getText', serialized);
+    } catch (err) {
+      return await this.driver.getElementText(serialized);
     }
   }
 
   /**
    * Checks if Flutter widget is rendered on current screen
    */
-  async isDisplayed(finder, description = 'Widget') {
-    try {
-      const text = await this.getText(finder, description);
-      return text !== null && text !== undefined;
-    } catch (err) {
-      return false;
-    }
+  async isDisplayed(finder, description = 'Widget', timeoutMs = 5000) {
+    return await this.waitForVisible(finder, timeoutMs, description);
   }
 
   /**

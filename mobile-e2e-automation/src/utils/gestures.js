@@ -4,6 +4,21 @@ const logger = require('./logger');
 
 class GestureUtils {
   /**
+   * Safely retrieves screen dimensions with fallback if driver does not support getWindowSize
+   */
+  async getScreenBounds(driver) {
+    try {
+      const size = await driver.getWindowSize();
+      if (size && size.width && size.height) {
+        return size;
+      }
+    } catch (err) {
+      logger.warn(`getWindowSize notice: ${err.message}. Using default screen bounds (1080x2340).`);
+    }
+    return { width: 1080, height: 2340 };
+  }
+
+  /**
    * Performs W3C Single Tap on coordinates or element
    */
   async tap(driver, x, y) {
@@ -95,7 +110,7 @@ class GestureUtils {
    * Performs Swipe Up / Scroll Down
    */
   async scrollDown(driver, distanceFactor = 0.6) {
-    const { width, height } = await driver.getWindowSize();
+    const { width, height } = await this.getScreenBounds(driver);
     const startX = width / 2;
     const startY = height * 0.8;
     const endY = height * (0.8 - distanceFactor);
@@ -106,7 +121,7 @@ class GestureUtils {
    * Performs Swipe Down / Scroll Up
    */
   async scrollUp(driver, distanceFactor = 0.6) {
-    const { width, height } = await driver.getWindowSize();
+    const { width, height } = await this.getScreenBounds(driver);
     const startX = width / 2;
     const startY = height * 0.2;
     const endY = height * (0.2 + distanceFactor);
@@ -140,7 +155,7 @@ class GestureUtils {
    */
   async pinch(driver) {
     logger.info('Performing Pinch gesture');
-    const { width, height } = await driver.getWindowSize();
+    const { width, height } = await this.getScreenBounds(driver);
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -176,7 +191,7 @@ class GestureUtils {
    */
   async zoom(driver) {
     logger.info('Performing Zoom gesture');
-    const { width, height } = await driver.getWindowSize();
+    const { width, height } = await this.getScreenBounds(driver);
     const centerX = width / 2;
     const centerY = height / 2;
 
