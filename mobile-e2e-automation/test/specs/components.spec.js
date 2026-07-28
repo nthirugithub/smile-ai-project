@@ -11,7 +11,7 @@ const logger = require('../../src/utils/logger');
 const testData = require('../fixtures/testData');
 
 describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
-  this.timeout(300000);
+  this.timeout(60000);
 
   let driver;
   let compPage;

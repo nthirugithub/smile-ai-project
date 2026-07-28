@@ -14,7 +14,7 @@ const LoginPage = require('../../src/pages/loginPage');
 const testData = require('../fixtures/testData');
 
 describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', function () {
-  this.timeout(300000);
+  this.timeout(60000);
 
   let driver;
   let suiteStartTime;

@@ -14,9 +14,9 @@ module.exports = {
     'json=true',
     'consoleReporter=spec'
   ],
-  retries: 1,
+  retries: 0,
   slow: '10000',
-  timeout: '300000', // 5 minutes per spec for E2E mobile operations
+  timeout: '60000', // 1 minute per spec for fast E2E execution
   ui: 'bdd',
   exit: true,
   spec: ['test/specs/**/*.spec.js']

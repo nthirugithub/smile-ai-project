@@ -11,7 +11,7 @@ const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
 describe('Flutter Android E2E - Navigation Suite', function () {
-  this.timeout(300000);
+  this.timeout(60000);
 
   let driver;
   let homePage;

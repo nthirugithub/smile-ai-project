@@ -29,7 +29,7 @@ class BasePage {
    * Waits until a Flutter element is visible using flutter:waitFor.
    * Returns true if found within timeoutMs, false otherwise.
    */
-  async waitForVisible(finder, timeoutMs = 10000, description = 'Flutter element') {
+  async waitForVisible(finder, timeoutMs = 5000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible (${timeoutMs}ms)...`);
     await this._disableFrameSync();
     const serialized = this.finder.serialize(finder);
@@ -46,7 +46,7 @@ class BasePage {
   /**
    * Waits until a Flutter element is ABSENT using flutter:waitForAbsent.
    */
-  async waitForAbsent(finder, timeoutMs = 10000, description = 'Flutter element') {
+  async waitForAbsent(finder, timeoutMs = 5000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to disappear (${timeoutMs}ms)...`);
     await this._disableFrameSync();
     const serialized = this.finder.serialize(finder);
@@ -65,7 +65,7 @@ class BasePage {
    * Checks waitForVisible first so missing elements fail with a clean error
    * instead of timing out in Flutter Driver tap command.
    */
-  async click(finder, description = 'Widget', timeoutMs = 10000) {
+  async click(finder, description = 'Widget', timeoutMs = 5000) {
     logger.step(this.constructor.name, `Click on ${description}`);
     excelReporter.logStep(this.constructor.name, `Click on ${description}`);
 
@@ -96,7 +96,7 @@ class BasePage {
   /**
    * Enters text into a Flutter TextField widget.
    */
-  async enterText(finder, text, description = 'TextField', timeoutMs = 10000) {
+  async enterText(finder, text, description = 'TextField', timeoutMs = 5000) {
     logger.step(this.constructor.name, `Enter text into ${description}: "${text}"`);
     excelReporter.logStep(this.constructor.name, `Enter text into ${description}`);
 

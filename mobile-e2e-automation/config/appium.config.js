@@ -14,10 +14,10 @@ const flutterCapabilities = {
   'appium:autoGrantPermissions': true,
   'appium:noReset': false,
   'appium:fullReset': false,
-  'appium:newCommandTimeout': 300,
-  'appium:adbExecTimeout': 60000,
-  'appium:retryBackoff': 1000,
-  'appium:maxRetryCount': 3
+  'appium:newCommandTimeout': 60,
+  'appium:adbExecTimeout': 30000,
+  'appium:retryBackoff': 500,
+  'appium:maxRetryCount': 1
 };
 
 const uiAutomator2Capabilities = {
@@ -31,7 +31,7 @@ const uiAutomator2Capabilities = {
   'appium:appActivity': env.appActivity,
   'appium:autoGrantPermissions': true,
   'appium:noReset': true,
-  'appium:newCommandTimeout': 300
+  'appium:newCommandTimeout': 60
 };
 
 module.exports = {
