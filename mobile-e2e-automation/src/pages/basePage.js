@@ -12,7 +12,7 @@ class BasePage {
   }
 
   /**
-   * Safe wait for Flutter element to become visible / rendered using flutter:waitFor
+   * Safe wait for Flutter element to become visible / rendered using official flutter:waitFor
    */
   async waitForVisible(finder, timeoutMs = 15000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible...`);
@@ -28,7 +28,7 @@ class BasePage {
   }
 
   /**
-   * Clicks a Flutter widget cleanly without Promise.race command flooding
+   * Clicks a Flutter widget using official appium-flutter-driver W3C elementClick / flutter:clickElement
    */
   async click(finder, description = 'Widget', timeoutMs = 15000) {
     logger.step(this.constructor.name, `Click on ${description}`);
@@ -36,11 +36,11 @@ class BasePage {
     
     const serialized = this.finder.serialize(finder);
     try {
-      await this.driver.execute('flutter:click', serialized);
+      await this.driver.elementClick(serialized);
     } catch (err) {
-      logger.warn(`flutter:click execution fallback notice for ${description}: ${err.message}`);
+      logger.warn(`elementClick notice for ${description}: ${err.message}. Retrying via flutter:clickElement...`);
       try {
-        await this.driver.elementClick(serialized);
+        await this.driver.execute('flutter:clickElement', serialized);
       } catch (fallbackErr) {
         logger.error(`Failed to click ${description}: ${fallbackErr.message}`);
         throw fallbackErr;
@@ -49,7 +49,7 @@ class BasePage {
   }
 
   /**
-   * Enters text into Flutter TextField widget
+   * Enters text into Flutter TextField widget using official elementSendKeys / flutter:enterText
    */
   async enterText(finder, text, description = 'TextField') {
     logger.step(this.constructor.name, `Enter text into ${description}: "${text}"`);
@@ -58,27 +58,29 @@ class BasePage {
     const serialized = this.finder.serialize(finder);
     await this.click(finder, description);
     try {
-      await this.driver.execute('flutter:enterText', text);
+      await this.driver.elementSendKeys(serialized, text);
     } catch (err) {
+      logger.warn(`elementSendKeys notice for ${description}: ${err.message}. Retrying via flutter:enterText...`);
       try {
-        await this.driver.elementSendKeys(serialized, text);
-      } catch (sendErr) {
-        logger.error(`Failed to enter text into ${description}: ${sendErr.message}`);
-        throw sendErr;
+        await this.driver.execute('flutter:enterText', text);
+      } catch (fallbackErr) {
+        logger.error(`Failed to enter text into ${description}: ${fallbackErr.message}`);
+        throw fallbackErr;
       }
     }
   }
 
   /**
-   * Retrieves visible text content from Flutter Text widget
+   * Retrieves visible text content from Flutter Text widget using official getElementText
    */
   async getText(finder, description = 'Text Widget') {
     logger.info(`Getting text content from ${description}`);
     const serialized = this.finder.serialize(finder);
     try {
-      return await this.driver.execute('flutter:getText', serialized);
-    } catch (err) {
       return await this.driver.getElementText(serialized);
+    } catch (err) {
+      logger.warn(`getElementText notice for ${description}: ${err.message}`);
+      throw err;
     }
   }
 
