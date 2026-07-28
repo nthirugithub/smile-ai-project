@@ -122,7 +122,7 @@ class ApiService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 4));
 
       return jsonDecode(response.body);
 
@@ -156,7 +156,7 @@ class ApiService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 4));
 
       return jsonDecode(response.body);
 
@@ -164,7 +164,7 @@ class ApiService {
 
       return {
         'success': false,
-        'error': e.toString(),
+        'error': 'Invalid credentials provided. Access denied.',
       };
     }
   }

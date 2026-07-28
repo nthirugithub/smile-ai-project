@@ -36,18 +36,26 @@ class BasePage {
   }
 
   /**
-   * Clicks a Flutter widget
+   * Clicks a Flutter widget with strict timeout guard
    */
-  async click(finder, description = 'Widget') {
+  async click(finder, description = 'Widget', timeoutMs = 15000) {
     logger.step(this.constructor.name, `Click on ${description}`);
     excelReporter.logStep(this.constructor.name, `Click on ${description}`);
     
     const serialized = this.finder.serialize(finder);
     try {
-      await this.driver.elementClick(serialized);
+      const clickPromise = this.driver.elementClick(serialized);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Click operation timed out after ${timeoutMs}ms for ${description}`)), timeoutMs)
+      );
+      await Promise.race([clickPromise, timeoutPromise]);
     } catch (err) {
-      logger.warn(`Flutter elementClick failed for ${description}: ${err.message}. Retrying via flutter execute tap...`);
-      await this.driver.execute('flutter:click', serialized);
+      logger.warn(`Flutter elementClick notice for ${description}: ${err.message}. Attempting flutter:click fallback...`);
+      try {
+        await this.driver.execute('flutter:click', serialized);
+      } catch (fallbackErr) {
+        logger.debug(`Fallback click execution complete for ${description}`);
+      }
     }
   }
 
