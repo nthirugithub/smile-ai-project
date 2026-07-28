@@ -94,9 +94,7 @@ jobs:
           disable-animations: true
           script: |
             adb devices
-            cd mobile-e2e-automation
-            SUITE="${{ github.event.inputs.test_suite }}"
-            npm run "${SUITE:-test:all}"
+            npm --prefix mobile-e2e-automation run ${{ github.event.inputs.test_suite || 'test:all' }}
 
       - name: 12. Generate Mochawesome HTML Report
         if: always()
