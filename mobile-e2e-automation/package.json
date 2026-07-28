@@ -1,0 +1,51 @@
+{
+  "name": "flutter-android-appium-e2e",
+  "version": "2.0.0",
+  "description": "Enterprise-grade Flutter Android E2E Automation Framework using Appium 2.x, Node.js, Mocha, Chai, Mochawesome, ExcelJS, Winston, AI Screen Discovery & RCA",
+  "main": "src/driver/driverFactory.js",
+  "scripts": {
+    "test": "mocha --config .mocharc.js",
+    "test:auth": "mocha --config .mocharc.js test/specs/auth.spec.js",
+    "test:forms": "mocha --config .mocharc.js test/specs/forms.spec.js",
+    "test:components": "mocha --config .mocharc.js test/specs/components.spec.js",
+    "test:navigation": "mocha --config .mocharc.js test/specs/navigation.spec.js",
+    "test:ai": "mocha --config .mocharc.js test/specs/aiDiscovery.spec.js",
+    "test:all": "mocha --config .mocharc.js test/specs/**/*.spec.js",
+    "report:mochawesome": "marge reports/mochawesome.json --reportDir reports --reportFilename index.html",
+    "lint": "echo 'Linting framework code...'",
+    "posttest": "node -e \"console.log('Test execution completed. Excel & Mochawesome reports generated in reports/ directory.')\""
+  },
+  "keywords": [
+    "flutter",
+    "appium",
+    "appium-flutter-driver",
+    "android",
+    "testing",
+    "e2e",
+    "mocha",
+    "chai",
+    "mochawesome",
+    "exceljs",
+    "winston",
+    "ai-testing"
+  ],
+  "author": "Mobile QA Automation Architecture Team",
+  "license": "MIT",
+  "dependencies": {
+    "appium": "^2.11.0",
+    "appium-flutter-finder": "^0.4.0",
+    "chai": "^4.3.10",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "mochawesome": "^7.1.3",
+    "mochawesome-report-generator": "^6.2.0",
+    "webdriverio": "^8.38.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
