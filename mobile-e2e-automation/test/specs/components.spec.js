@@ -73,7 +73,7 @@ describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
     const startTime = Date.now();
 
     try {
-      const { width, height } = await driver.getWindowSize();
+      const { width, height } = await gestures.getScreenBounds(driver);
 
       await gestures.tap(driver, width / 2, height / 2);
       await gestures.doubleTap(driver, width / 2, height / 2);

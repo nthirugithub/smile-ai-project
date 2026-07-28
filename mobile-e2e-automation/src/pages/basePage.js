@@ -27,36 +27,49 @@ class BasePage {
 
   /**
    * Waits until a Flutter element is visible using flutter:waitFor.
-   * Returns true if found within timeoutMs, false otherwise.
+   * Enables setFrameSync(true) during wait so Flutter Driver yields to the Dart event loop
+   * on frame callbacks, preventing tight spin-locks when elements are absent.
    */
-  async waitForVisible(finder, timeoutMs = 5000, description = 'Flutter element') {
+  async waitForVisible(finder, timeoutMs = 3000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible (${timeoutMs}ms)...`);
-    await this._disableFrameSync();
+    try {
+      await this.driver.execute('flutter:setFrameSync', true, 1000);
+    } catch (_) {}
+
     const serialized = this.finder.serialize(finder);
     try {
       await this.driver.execute('flutter:waitFor', serialized, timeoutMs);
       return true;
     } catch (err) {
       logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms: ${err.message}`);
-      await this._disableFrameSync();
       return false;
+    } finally {
+      try {
+        await this.driver.execute('flutter:setFrameSync', false, 1000);
+      } catch (_) {}
     }
   }
 
   /**
    * Waits until a Flutter element is ABSENT using flutter:waitForAbsent.
    */
-  async waitForAbsent(finder, timeoutMs = 5000, description = 'Flutter element') {
+  async waitForAbsent(finder, timeoutMs = 3000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to disappear (${timeoutMs}ms)...`);
-    await this._disableFrameSync();
+    try {
+      await this.driver.execute('flutter:setFrameSync', true, 1000);
+    } catch (_) {}
+
     const serialized = this.finder.serialize(finder);
     try {
       await this.driver.execute('flutter:waitForAbsent', serialized, timeoutMs);
       return true;
     } catch (err) {
       logger.warn(`Timeout waiting for ${description} to disappear: ${err.message}`);
-      await this._disableFrameSync();
       return false;
+    } finally {
+      try {
+        await this.driver.execute('flutter:setFrameSync', false, 1000);
+      } catch (_) {}
     }
   }
 
