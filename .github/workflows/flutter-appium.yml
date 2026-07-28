@@ -54,7 +54,7 @@ jobs:
 
       - name: 6. Install Framework Node Dependencies
         working-directory: ./mobile-e2e-automation
-        run: npm ci
+        run: npm install
 
       - name: 7. Start Appium Server in Background
         run: |
