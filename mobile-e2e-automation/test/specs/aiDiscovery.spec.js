@@ -10,6 +10,9 @@ const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
+const LoginPage = require('../../src/pages/loginPage');
+const testData = require('../fixtures/testData');
+
 describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', function () {
   this.timeout(300000);
 
@@ -21,6 +24,8 @@ describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', functi
     suiteStartTime = Date.now();
     logger.info('🧠 Starting Smart AI Screen Discovery & Autonomous Testing Suite...');
     driver = await driverFactory.createDriver('Flutter');
+    const loginPage = new LoginPage(driver);
+    await loginPage.login(testData.validUser.email, testData.validUser.password);
   });
 
   after(async function () {

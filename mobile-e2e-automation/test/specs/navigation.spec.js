@@ -8,6 +8,9 @@ const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
+const LoginPage = require('../../src/pages/loginPage');
+const testData = require('../fixtures/testData');
+
 describe('Flutter Android E2E - Navigation Suite', function () {
   this.timeout(300000);
 
@@ -21,6 +24,8 @@ describe('Flutter Android E2E - Navigation Suite', function () {
     logger.info('🚀 Starting Navigation Test Suite...');
     driver = await driverFactory.createDriver('Flutter');
     homePage = new HomePage(driver);
+    const loginPage = new LoginPage(driver);
+    await loginPage.login(testData.validUser.email, testData.validUser.password);
   });
 
   after(async function () {

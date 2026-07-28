@@ -9,6 +9,8 @@ const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
+const LoginPage = require('../../src/pages/loginPage');
+
 describe('Flutter Android E2E - Form Validation Suite', function () {
   this.timeout(300000);
 
@@ -22,6 +24,8 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     logger.info('🚀 Starting Form Validation Test Suite...');
     driver = await driverFactory.createDriver('Flutter');
     formPage = new FormPage(driver);
+    const loginPage = new LoginPage(driver);
+    await loginPage.login(testData.validUser.email, testData.validUser.password);
   });
 
   after(async function () {

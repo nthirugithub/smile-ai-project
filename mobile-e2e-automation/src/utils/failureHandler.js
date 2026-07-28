@@ -80,33 +80,51 @@ class FailureHandler {
       return diagnostics;
     }
 
-    // 1. Capture Screenshot (5s timeout)
+    // 1. Capture Screenshot safely via context switch or ADB (5s timeout)
     try {
-      const screenshotBase64 = await this.withTimeout(driver.takeScreenshot(), 5000, 'takeScreenshot');
-      fs.writeFileSync(screenshotPath, Buffer.from(screenshotBase64, 'base64'));
-      diagnostics.screenshotPath = screenshotPath;
-      logger.info(`📸 Screenshot captured: ${screenshotPath}`);
+      let captured = false;
+      try {
+        await driver.switchContext('NATIVE_APP');
+        const screenshotBase64 = await this.withTimeout(driver.takeScreenshot(), 4000, 'takeScreenshot');
+        fs.writeFileSync(screenshotPath, Buffer.from(screenshotBase64, 'base64'));
+        diagnostics.screenshotPath = screenshotPath;
+        logger.info(`📸 Native screenshot captured: ${screenshotPath}`);
+        captured = true;
+      } catch (nativeErr) {
+        logger.debug(`Native screenshot context notice: ${nativeErr.message}`);
+      } finally {
+        try {
+          await driver.switchContext('FLUTTER');
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (!captured) {
+        try {
+          execSync(`adb -s ${env.udid} shell screencap -p /sdcard/failure_shot.png`, { encoding: 'utf8', timeout: 4000 });
+          execSync(`adb -s ${env.udid} pull /sdcard/failure_shot.png "${screenshotPath}"`, { encoding: 'utf8', timeout: 4000 });
+          diagnostics.screenshotPath = screenshotPath;
+          logger.info(`📸 ADB screenshot captured: ${screenshotPath}`);
+        } catch (adbErr) {
+          logger.warn(`ADB screenshot capture failed: ${adbErr.message}`);
+        }
+      }
     } catch (err) {
       logger.error(`Failed to capture screenshot: ${err.message}`);
     }
 
-    // 2. Capture Device Logs (logcat - 5s timeout)
+    // 2. Capture Device Logs (logcat via ADB - 5s timeout)
     try {
-      let logcatData = '';
-      if (typeof driver.getLogs === 'function') {
-        const logs = await this.withTimeout(driver.getLogs('logcat'), 5000, 'getLogs(logcat)');
-        logcatData = logs.map(l => `[${l.timestamp}] ${l.level}: ${l.message}`).join('\n');
-      } else {
-        logcatData = execSync(`adb -s ${env.udid} logcat -d *:E`, { encoding: 'utf8', timeout: 5000 });
-      }
+      const logcatData = execSync(`adb -s ${env.udid} logcat -d *:E`, { encoding: 'utf8', timeout: 5000 });
       fs.writeFileSync(logcatPath, logcatData);
       diagnostics.logcatPath = logcatPath;
       logger.info(`📋 Device logcat captured: ${logcatPath}`);
     } catch (err) {
-      logger.warn(`Could not extract logcat logs: ${err.message}`);
+      logger.warn(`Could not extract logcat logs via ADB: ${err.message}`);
     }
 
-    // 3. Capture Flutter Widget Tree Dump (5s timeout - prevents hanging on large trees)
+    // 3. Capture Flutter Widget Tree Dump (5s timeout - non-blocking)
     try {
       const widgetTree = await this.withTimeout(driver.execute('flutter:getRenderTree'), 5000, 'flutter:getRenderTree');
       fs.writeFileSync(widgetTreePath, typeof widgetTree === 'string' ? widgetTree : JSON.stringify(widgetTree, null, 2));
@@ -118,13 +136,9 @@ class FailureHandler {
 
     // 4. Capture Current Activity (3s timeout)
     try {
-      diagnostics.currentActivity = await this.withTimeout(driver.getCurrentActivity(), 3000, 'getCurrentActivity');
+      diagnostics.currentActivity = execSync(`adb -s ${env.udid} shell "dumpsys window | grep mCurrentFocus"`, { encoding: 'utf8', timeout: 3000 }).trim();
     } catch (err) {
-      try {
-        diagnostics.currentActivity = execSync(`adb -s ${env.udid} shell "dumpsys window | grep mCurrentFocus"`, { encoding: 'utf8', timeout: 3000 }).trim();
-      } catch (e) {
-        diagnostics.currentActivity = 'UnknownActivity';
-      }
+      diagnostics.currentActivity = 'UnknownActivity';
     }
 
     // Save summary JSON

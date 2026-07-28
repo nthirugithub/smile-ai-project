@@ -15,11 +15,10 @@ class BasePage {
    * Safe wait for Flutter element to become visible / rendered using official flutter:waitFor
    */
   async waitForVisible(finder, timeoutMs = 15000, description = 'Flutter element') {
-    logger.info(`Waiting for ${description} to be visible...`);
+    logger.info(`Waiting for ${description} to be visible (${timeoutMs}ms)...`);
     const serialized = this.finder.serialize(finder);
-    const timeoutInSeconds = Math.max(1, Math.floor(timeoutMs / 1000));
     try {
-      await this.driver.execute('flutter:waitFor', serialized, timeoutInSeconds);
+      await this.driver.execute('flutter:waitFor', serialized, timeoutMs);
       return true;
     } catch (err) {
       logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms: ${err.message}`);
