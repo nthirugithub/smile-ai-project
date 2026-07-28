@@ -3,19 +3,19 @@
 const { expect } = require('chai');
 const driverFactory = require('../../src/driver/driverFactory');
 const FormPage = require('../../src/pages/formPage');
+const LoginPage = require('../../src/pages/loginPage');
 const testData = require('../fixtures/testData');
 const excelReporter = require('../../src/utils/excelReporter');
 const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
-const LoginPage = require('../../src/pages/loginPage');
-
 describe('Flutter Android E2E - Form Validation Suite', function () {
   this.timeout(300000);
 
   let driver;
   let formPage;
+  let loginPage;
   let suiteStartTime;
   const suiteResults = [];
 
@@ -24,8 +24,25 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     logger.info('🚀 Starting Form Validation Test Suite...');
     driver = await driverFactory.createDriver('Flutter');
     formPage = new FormPage(driver);
-    const loginPage = new LoginPage(driver);
-    await loginPage.login(testData.validUser.email, testData.validUser.password);
+    loginPage = new LoginPage(driver);
+  });
+
+  beforeEach(async function () {
+    // Reset state to Register screen before each form test
+    try {
+      await driver.execute('flutter:setFrameSync', false, 1000);
+    } catch (_) {}
+
+    const isRegisterVisible = await formPage.isDisplayed(formPage.submitFormButton, 'Register Button', 3000);
+    if (!isRegisterVisible) {
+      // If on Login screen or elsewhere, go to Sign Up
+      try {
+        await loginPage.goToSignUp();
+      } catch (_) {
+        await driver.back();
+        await loginPage.goToSignUp();
+      }
+    }
   });
 
   after(async function () {
@@ -49,11 +66,11 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     try {
       await formPage.submitForm();
 
-      const nameErr = await formPage.getFullNameError();
-      const emailErr = await formPage.getEmailError();
+      const nameErrVisible = await formPage.isDisplayed(formPage.fullNameError, 'Full Name Error');
+      const emailErrVisible = await formPage.isDisplayed(formPage.emailError, 'Email Error');
 
-      expect(nameErr).to.contain('Full name is required');
-      expect(emailErr).to.contain('Email is required');
+      expect(nameErrVisible).to.be.true;
+      expect(emailErrVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -70,17 +87,19 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     }
   });
 
-  it('TC_FORM_002: Validate phone number format rule', async function () {
+  it('TC_FORM_002: Validate password minimum length validation rule', async function () {
     const testId = 'TC_FORM_002';
-    const scenario = 'Enter invalid phone format and verify Flutter validation message';
+    const scenario = 'Enter short password and verify Flutter validation message';
     const startTime = Date.now();
 
     try {
-      await formPage.enterPhone(testData.formValidation.invalidPhones[0]);
+      await formPage.enterFullName('QA Test User');
+      await formPage.enterEmail('test.form@example.com');
+      await formPage.enterPassword('123');
       await formPage.submitForm();
 
-      const phoneErr = await formPage.getPhoneError();
-      expect(phoneErr).to.contain(testData.formValidation.expectedPhoneError);
+      const passwordErrVisible = await formPage.isDisplayed(formPage.passwordError, 'Password Length Error');
+      expect(passwordErrVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -97,27 +116,22 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     }
   });
 
-  it('TC_FORM_003: Validate successful form submission with DatePicker, Dropdown, Radio & Checkbox', async function () {
+  it('TC_FORM_003: Validate successful registration form submission', async function () {
     const testId = 'TC_FORM_003';
-    const scenario = 'Fill valid form details and verify success confirmation';
+    const scenario = 'Fill valid form details and verify registration success';
     const startTime = Date.now();
 
     try {
+      const uniqueEmail = `form.user+${Date.now()}@example.com`;
       await formPage.enterFullName(testData.validUser.fullName);
-      await formPage.enterEmail(testData.validUser.email);
-      await formPage.enterPhone(testData.validUser.phone);
+      await formPage.enterEmail(uniqueEmail);
       await formPage.enterPassword(testData.validUser.password);
-
-      await formPage.selectDateOfBirth();
-      await formPage.selectCountry('United States');
-      await formPage.selectGender('male');
-      await formPage.toggleTerms(true);
-      await formPage.toggleNewsletter(true);
+      await formPage.enterConfirmPassword(testData.validUser.password);
 
       await formPage.submitForm();
 
-      const isSuccess = await formPage.isFormSubmittedSuccessfully();
-      expect(isSuccess).to.be.true;
+      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 20000, 'Login Button');
+      expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });

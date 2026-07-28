@@ -6,19 +6,7 @@ const logger = require('../utils/logger');
 const excelReporter = require('../utils/excelReporter');
 
 /**
- * BasePage — all Flutter element interactions.
- *
- * ROOT CAUSE FIX (RC-2):
- * W3C `elementClick()` bypasses `flutter:setFrameSync(false)` in some
- * appium-flutter-driver versions and calls `waitUntilNoTransientCallbacks`
- * regardless. When a SnackBar is showing (ModalBarrier blocking:true) or an
- * entrance animation is running, `waitUntilNoTransientCallbacks` never
- * resolves → 180-second hang.
- *
- * FIX: Re-assert `flutter:setFrameSync(false)` before EVERY command that
- * communicates with the Flutter extension, and use `flutter:clickElement`
- * (execute-script path, which respects frame-sync off) as the PRIMARY click
- * method, falling back to W3C `elementClick` only if the execute call throws.
+ * BasePage — core interaction helpers for Flutter Driver & WebdriverIO.
  */
 class BasePage {
   constructor(driver) {
@@ -26,31 +14,22 @@ class BasePage {
     this.finder = flutterFinder;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FRAME SYNC GUARD
-  // ─────────────────────────────────────────────────────────────────────────
-
   /**
    * Re-asserts setFrameSync(false) before commands.
-   * Suppresses any error so it never blocks the actual command.
    */
   async _disableFrameSync() {
     try {
       await this.driver.execute('flutter:setFrameSync', false, 1000);
     } catch (_) {
-      // ignore — driver might not support it or already set
+      // ignore
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // CORE INTERACTION METHODS
-  // ─────────────────────────────────────────────────────────────────────────
 
   /**
    * Waits until a Flutter element is visible using flutter:waitFor.
    * Returns true if found within timeoutMs, false otherwise.
    */
-  async waitForVisible(finder, timeoutMs = 15000, description = 'Flutter element') {
+  async waitForVisible(finder, timeoutMs = 10000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible (${timeoutMs}ms)...`);
     await this._disableFrameSync();
     const serialized = this.finder.serialize(finder);
@@ -59,8 +38,6 @@ class BasePage {
       return true;
     } catch (err) {
       logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms: ${err.message}`);
-      // Re-assert frame sync off after a waitFor timeout — some driver versions
-      // re-enable frame sync when a waitFor command fails.
       await this._disableFrameSync();
       return false;
     }
@@ -68,7 +45,6 @@ class BasePage {
 
   /**
    * Waits until a Flutter element is ABSENT using flutter:waitForAbsent.
-   * Used to wait for SnackBars and loading overlays to dismiss.
    */
   async waitForAbsent(finder, timeoutMs = 10000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to disappear (${timeoutMs}ms)...`);
@@ -86,22 +62,24 @@ class BasePage {
 
   /**
    * Clicks a Flutter widget.
-   *
-   * PRIMARY: flutter:clickElement (execute-script path — respects setFrameSync off)
-   * FALLBACK: W3C elementClick
-   *
-   * RC-2 fix: execute-script path does NOT call waitUntilNoTransientCallbacks
-   * when frame sync is disabled. W3C elementClick DOES call it regardless.
+   * Checks waitForVisible first so missing elements fail with a clean error
+   * instead of timing out in Flutter Driver tap command.
    */
-  async click(finder, description = 'Widget') {
+  async click(finder, description = 'Widget', timeoutMs = 10000) {
     logger.step(this.constructor.name, `Click on ${description}`);
     excelReporter.logStep(this.constructor.name, `Click on ${description}`);
+
+    const isVisible = await this.waitForVisible(finder, timeoutMs, description);
+    if (!isVisible) {
+      const err = new Error(`Element "${description}" was not found or is not visible on screen within ${timeoutMs}ms.`);
+      logger.error(err.message);
+      throw err;
+    }
 
     await this._disableFrameSync();
     const serialized = this.finder.serialize(finder);
 
     try {
-      // PRIMARY: execute path — honours setFrameSync(false)
       await this.driver.execute('flutter:clickElement', serialized);
     } catch (err) {
       logger.warn(`flutter:clickElement notice for ${description}: ${err.message}. Retrying via W3C elementClick...`);
@@ -116,16 +94,14 @@ class BasePage {
   }
 
   /**
-   * Enters text into a Flutter TextField.
-   * Clicks the field first to focus it, then sends keys.
+   * Enters text into a Flutter TextField widget.
    */
-  async enterText(finder, text, description = 'TextField') {
+  async enterText(finder, text, description = 'TextField', timeoutMs = 10000) {
     logger.step(this.constructor.name, `Enter text into ${description}: "${text}"`);
     excelReporter.logStep(this.constructor.name, `Enter text into ${description}`);
 
-    await this._disableFrameSync();
+    await this.click(finder, description, timeoutMs);
     const serialized = this.finder.serialize(finder);
-    await this.click(finder, description);
     try {
       await this.driver.elementSendKeys(serialized, text);
     } catch (err) {
@@ -155,34 +131,33 @@ class BasePage {
   }
 
   /**
-   * Checks if a Flutter widget is rendered on the current screen.
-   * Uses a short timeout so negative checks fail fast.
+   * Checks if Flutter widget is rendered on current screen.
    */
   async isDisplayed(finder, description = 'Widget', timeoutMs = 5000) {
     return await this.waitForVisible(finder, timeoutMs, description);
   }
 
   /**
-   * Navigates back.
+   * Performs Back Navigation
    */
   async goBack() {
     logger.step(this.constructor.name, 'Navigate Back');
     try {
-      await this.click(this.finder.pageBack(), 'Page Back Key');
+      await this.click(this.finder.pageBack(), 'Page Back Key', 3000);
     } catch (err) {
       await this.driver.back();
     }
   }
 
   /**
-   * Scroll down gesture.
+   * Scroll down gesture
    */
   async scrollDown() {
     await gestures.scrollDown(this.driver);
   }
 
   /**
-   * Scroll up gesture.
+   * Scroll up gesture
    */
   async scrollUp() {
     await gestures.scrollUp(this.driver);

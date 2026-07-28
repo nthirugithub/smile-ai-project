@@ -25,12 +25,17 @@ class ScreenAnalyzer {
     };
 
     try {
-      // 1. Get Render Tree JSON dump
+      // 1. Get Render Tree JSON dump with non-blocking timeout
       let rawTree = null;
       try {
-        rawTree = await driver.execute('flutter:getRenderTree');
+        let timer;
+        const treePromise = driver.execute('flutter:getRenderTree');
+        const timeoutPromise = new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('flutter:getRenderTree timed out after 4000ms')), 4000);
+        });
+        rawTree = await Promise.race([treePromise, timeoutPromise]).finally(() => clearTimeout(timer));
       } catch (err) {
-        logger.warn('Render tree dump unavailable. Using fallback element discovery.');
+        logger.warn(`Render tree dump notice: ${err.message}. Using fallback element discovery.`);
       }
 
       // 2. Perform intelligent element parsing
@@ -98,7 +103,6 @@ class ScreenAnalyzer {
   generateScenarios(widgets) {
     const scenarios = [];
 
-    // Scenario A: Form Field Validations
     widgets.textFields.forEach(field => {
       scenarios.push({
         id: `AI_SCENARIO_EMPTY_${field.id.toUpperCase()}`,
@@ -119,7 +123,6 @@ class ScreenAnalyzer {
       }
     });
 
-    // Scenario B: Primary Button Click & Navigation
     widgets.buttons.forEach(btn => {
       scenarios.push({
         id: `AI_SCENARIO_CLICK_${btn.id.toUpperCase()}`,

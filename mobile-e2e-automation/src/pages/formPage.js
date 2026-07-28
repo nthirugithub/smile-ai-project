@@ -2,101 +2,59 @@
 
 const BasePage = require('./basePage');
 
+/**
+ * FormPage — Page Object for Flutter Form screens (RegisterScreen & LoginScreen).
+ * Uses actual ValueKeys defined in register_card.dart and login_card.dart.
+ */
 class FormPage extends BasePage {
   constructor(driver) {
     super(driver);
 
-    // Form Field Locators (ValueKeys)
-    this.fullNameInput = this.finder.byValueKey('full_name_input');
-    this.emailInput = this.finder.byValueKey('form_email_input');
-    this.phoneInput = this.finder.byValueKey('phone_input');
-    this.passwordInput = this.finder.byValueKey('form_password_input');
-    this.dobPickerButton = this.finder.byValueKey('dob_picker_button');
-    this.countryDropdown = this.finder.byValueKey('country_dropdown');
-    this.genderMaleRadio = this.finder.byValueKey('gender_male_radio');
-    this.genderFemaleRadio = this.finder.byValueKey('gender_female_radio');
-    this.termsCheckbox = this.finder.byValueKey('terms_checkbox');
-    this.newsletterSwitch = this.finder.byValueKey('newsletter_switch');
-    this.submitFormButton = this.finder.byValueKey('submit_form_button');
+    // Registration Form Locators (matching register_card.dart)
+    this.fullNameInput = this.finder.byValueKey('register_name_input');
+    this.emailInput = this.finder.byValueKey('register_email_input');
+    this.passwordInput = this.finder.byValueKey('register_password_input');
+    this.confirmPasswordInput = this.finder.byValueKey('register_confirm_password_input');
+    this.submitFormButton = this.finder.byValueKey('register_button_key');
 
-    // Validation Message Locators
-    this.fullNameError = this.finder.byValueKey('full_name_error');
-    this.emailError = this.finder.byValueKey('form_email_error');
-    this.phoneError = this.finder.byValueKey('phone_error');
-    this.passwordError = this.finder.byValueKey('form_password_error');
-    this.termsError = this.finder.byValueKey('terms_error');
-    this.formSuccessBanner = this.finder.byValueKey('form_success_banner');
+    // Validation Text Locators
+    this.fullNameError = this.finder.byText('Full name is required');
+    this.emailError = this.finder.byText('Email is required');
+    this.passwordError = this.finder.byText('Password is required');
+    this.confirmPasswordError = this.finder.byText('Please confirm your password');
+    this.formSuccessBanner = this.finder.byText('Registration Successful');
   }
 
   async enterFullName(name) {
-    await this.enterText(this.fullNameInput, name, 'Full Name');
+    await this.enterText(this.fullNameInput, name, 'Full Name Field');
   }
 
   async enterEmail(email) {
     await this.enterText(this.emailInput, email, 'Email Field');
   }
 
-  async enterPhone(phone) {
-    await this.enterText(this.phoneInput, phone, 'Phone Number Field');
-  }
-
   async enterPassword(password) {
     await this.enterText(this.passwordInput, password, 'Password Field');
   }
 
-  async selectDateOfBirth() {
-    await this.click(this.dobPickerButton, 'Date of Birth Picker');
-    // Click OK / Confirm on Flutter DatePicker dialog
-    const confirmButton = this.finder.byText('OK');
-    await this.click(confirmButton, 'DatePicker OK Button');
-  }
-
-  async selectCountry(countryName) {
-    await this.click(this.countryDropdown, 'Country Dropdown');
-    const optionFinder = this.finder.byText(countryName);
-    await this.click(optionFinder, `Country Option: ${countryName}`);
-  }
-
-  async selectGender(gender = 'male') {
-    const radio = gender.toLowerCase() === 'male' ? this.genderMaleRadio : this.genderFemaleRadio;
-    await this.click(radio, `Gender Radio: ${gender}`);
-  }
-
-  async toggleTerms(agree = true) {
-    if (agree) {
-      await this.click(this.termsCheckbox, 'Terms & Conditions Checkbox');
-    }
-  }
-
-  async toggleNewsletter(enable = true) {
-    if (enable) {
-      await this.click(this.newsletterSwitch, 'Newsletter Switch');
-    }
+  async enterConfirmPassword(password) {
+    await this.enterText(this.confirmPasswordInput, password, 'Confirm Password Field');
   }
 
   async submitForm() {
-    await this.click(this.submitFormButton, 'Submit Form Button');
+    await this.click(this.submitFormButton, 'Create Account Button');
   }
 
-  // Getters for Flutter validation error messages
   async getFullNameError() {
     return await this.getText(this.fullNameError, 'Full Name Error Message');
   }
 
   async getEmailError() {
-    return await this.getText(this.emailError, 'Form Email Error Message');
-  }
-
-  async getPhoneError() {
-    return await this.getText(this.phoneError, 'Phone Error Message');
+    return await this.getText(this.emailError, 'Email Error Message');
   }
 
   async getPasswordError() {
-    return await this.getText(this.passwordError, 'Form Password Error Message');
-  }
-
-  async getTermsError() {
-    return await this.getText(this.termsError, 'Terms Error Message');
+    return await this.getText(this.passwordError, 'Password Error Message');
   }
 
   async isFormSubmittedSuccessfully() {

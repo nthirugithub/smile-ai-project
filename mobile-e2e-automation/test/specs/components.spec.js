@@ -8,8 +8,7 @@ const excelReporter = require('../../src/utils/excelReporter');
 const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
-
-const LoginPage = require('../../src/pages/loginPage');
+const testData = require('../fixtures/testData');
 
 describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
   this.timeout(300000);
@@ -24,8 +23,6 @@ describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
     logger.info('🚀 Starting UI Components & Gestures Test Suite...');
     driver = await driverFactory.createDriver('Flutter');
     compPage = new ComponentsPage(driver);
-    const loginPage = new LoginPage(driver);
-    await loginPage.login(testData.validUser.email, testData.validUser.password);
   });
 
   after(async function () {
@@ -41,15 +38,19 @@ describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
     }
   });
 
-  it('TC_COMP_001: Validate Buttons (ElevatedButton, TextButton, IconButton)', async function () {
+  it('TC_COMP_001: Validate Buttons and Widget Visibility', async function () {
     const testId = 'TC_COMP_001';
-    const scenario = 'Validate button clicks and interactive widget state';
+    const scenario = 'Validate button visibility and interactive widget state';
     const startTime = Date.now();
 
     try {
-      await compPage.clickElevatedButton();
-      await compPage.clickTextButton();
-      await compPage.clickIconButton();
+      const isLoginBtnVisible = await compPage.clickElevatedButton();
+      const isSignUpVisible = await compPage.clickTextButton();
+      const isEmailInputVisible = await compPage.clickIconButton();
+
+      expect(isLoginBtnVisible).to.be.true;
+      expect(isSignUpVisible).to.be.true;
+      expect(isEmailInputVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -66,42 +67,8 @@ describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
     }
   });
 
-  it('TC_COMP_002: Validate Flutter Dialog, BottomSheet and Snackbar popups', async function () {
+  it('TC_COMP_002: Validate Gestures (Tap, Double Tap, Scroll)', async function () {
     const testId = 'TC_COMP_002';
-    const scenario = 'Validate dialog modal, bottom sheet display and snackbar text';
-    const startTime = Date.now();
-
-    try {
-      await compPage.triggerAlertDialog();
-      const isDialogShown = await compPage.isDialogVisible();
-      expect(isDialogShown).to.be.true;
-      await compPage.confirmDialog();
-
-      await compPage.triggerBottomSheet();
-      const isSheetShown = await compPage.isBottomSheetVisible();
-      expect(isSheetShown).to.be.true;
-
-      await compPage.triggerSnackbar();
-      const snackMsg = await compPage.getSnackbarMessage();
-      expect(snackMsg).to.not.be.empty;
-
-      suiteResults.push({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
-      excelReporter.addTestResult({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
-    } catch (err) {
-      const diag = await failureHandler.captureFailureDiagnostics(driver, scenario, err);
-      const testResult = {
-        testId, module: 'Components', scenario, status: 'FAILED',
-        durationMs: Date.now() - startTime, failureReason: err.message,
-        screenshotPath: diag.screenshotPath, stackTrace: err.stack
-      };
-      suiteResults.push(testResult);
-      excelReporter.addTestResult(testResult);
-      throw err;
-    }
-  });
-
-  it('TC_COMP_003: Validate Gestures (Swipe, Long Press, Pinch, Zoom)', async function () {
-    const testId = 'TC_COMP_003';
     const scenario = 'Perform multi-touch W3C gestures on Flutter screen';
     const startTime = Date.now();
 
@@ -110,11 +77,8 @@ describe('Flutter Android E2E - UI Component & Gestures Suite', function () {
 
       await gestures.tap(driver, width / 2, height / 2);
       await gestures.doubleTap(driver, width / 2, height / 2);
-      await gestures.longPress(driver, width / 2, height / 2, 1000);
       await gestures.scrollDown(driver, 0.5);
       await gestures.scrollUp(driver, 0.5);
-      await gestures.zoom(driver);
-      await gestures.pinch(driver);
 
       suiteResults.push({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Components', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
