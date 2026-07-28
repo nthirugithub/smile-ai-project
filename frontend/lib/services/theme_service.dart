@@ -7,7 +7,7 @@ class ThemeService extends ChangeNotifier {
 
   ThemeService._();
 
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light;
 
   ThemeMode get themeMode => _themeMode;
   Future<void> _saveTheme(String theme) async {
@@ -27,7 +27,7 @@ class ThemeService extends ChangeNotifier {
     await SharedPreferences.getInstance();
 
     final savedTheme =
-        prefs.getString('app_theme') ?? 'System';
+        prefs.getString('app_theme') ?? 'Light';
 
 
     switch (savedTheme) {
@@ -62,9 +62,6 @@ class ThemeService extends ChangeNotifier {
     }
 
     await _saveTheme(theme);
-    final prefs = await SharedPreferences.getInstance();
-    print("Immediately after save: ${prefs.getString('app_theme')}");
-
     notifyListeners();
   }
 

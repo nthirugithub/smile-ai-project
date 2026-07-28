@@ -32,25 +32,25 @@ class Responsive {
   }
 
   static double sectionSpacing(BuildContext context) {
-    return isPhone(context) ? 24 : 34;
+    return isPhone(context) ? 20 : 34;
   }
 
   static double cardPadding(BuildContext context) {
-    return isPhone(context) ? 20 : 26;
+    return isPhone(context) ? 16 : 26;
   }
 
   // ---------- Fonts ----------
 
   static double titleFont(BuildContext context) {
-    return isPhone(context) ? 26 : 32;
+    return isPhone(context) ? 22 : 26;
   }
 
   static double headingFont(BuildContext context) {
-    return isPhone(context) ? 20 : 24;
+    return isPhone(context) ? 18 : 20;
   }
 
   static double bodyFont(BuildContext context) {
-    return isPhone(context) ? 14 : 16;
+    return isPhone(context) ? 13.5 : 14;
   }
 
   // ---------- Dashboard ----------
@@ -63,29 +63,28 @@ class Responsive {
   // ---------- Radius ----------
 
   static double cardRadius(BuildContext context) {
-    return isPhone(context) ? 18 : 24;
+    return isPhone(context) ? 16 : 24;
   }
 
 // ---------- Button ----------
 
   static double buttonHeight(BuildContext context) {
-    return isPhone(context) ? 48 : 54;
+    return isPhone(context) ? 46 : 56;
   }
-
 // ---------- Welcome Card ----------
 
   static double welcomePadding(BuildContext context) {
-    return isPhone(context) ? 24 : 32;
+    return isPhone(context) ? 18 : 32;
   }
 
 // ---------- Stat Card ----------
 
   static double statValueFont(BuildContext context) {
-    return isPhone(context) ? 28 : 32;
+    return isPhone(context) ? 24 : 32;
   }
 
   static double statTitleFont(BuildContext context) {
-    return isPhone(context) ? 14 : 15;
+    return isPhone(context) ? 13 : 15;
   }
   // ---------- AppShell ----------
 
@@ -105,6 +104,7 @@ class Responsive {
   static double searchWidth(BuildContext context) {
     final w = width(context);
 
+    if (isPhone(context)) return w - 90;
     if (w < desktop) return 220;
     if (w < 1300) return 260;
     if (w < 1600) return 320;
@@ -129,8 +129,18 @@ class Responsive {
   }
 
   static double shellPadding(BuildContext context) {
-    return isPhone(context) ? 12 : 20;
+    return isPhone(context) ? 8 : (isTablet(context) ? 14 : 20);
   }
+
+  static double shellInnerPadding(BuildContext context) {
+    return isPhone(context) ? 16 : (isTablet(context) ? 22 : 32);
+  }
+
+  static double maxDialogWidth(BuildContext context, {double defaultMaxWidth = 450}) {
+    final w = width(context);
+    return (w * 0.92).clamp(280.0, defaultMaxWidth);
+  }
+
   static double bottomPagePadding(BuildContext context) {
     return pagePadding(context) +
         MediaQuery.of(context).padding.bottom;
@@ -146,3 +156,4 @@ class Responsive {
   }
 
 }
+

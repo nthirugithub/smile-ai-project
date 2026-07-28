@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/theme_colors.dart';
+import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
 import 'hover_icon_button.dart';
+import 'app_chip.dart';
+import 'app_icon_container.dart';
 import '../utils/responsive.dart';
 
 class AppShell extends StatefulWidget {
@@ -13,7 +16,6 @@ class AppShell extends StatefulWidget {
   final String userEmail;
   final bool enableSearch;
 
-
   const AppShell({
     super.key,
     required this.child,
@@ -21,7 +23,6 @@ class AppShell extends StatefulWidget {
     required this.title,
     required this.userName,
     required this.userEmail,
-
     this.enableSearch = false,
   });
 
@@ -31,18 +32,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   bool sidebarOpen = true;
+  bool mobileSidebarOpen = false;
   String? hoveredRoute;
   List<dynamic> notifications = [];
-
   bool isLoadingNotifications = false;
   int userId = 0;
   final TextEditingController _searchController = TextEditingController();
-
   List<dynamic> _searchResults = [];
   bool _isSearching = false;
-
+  bool _mobileSearchOpen = false;
   final LayerLink _layerLink = LayerLink();
-
   OverlayEntry? _overlayEntry;
 
   void _removeOverlay() {
@@ -55,11 +54,26 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     _loadNotifications();
   }
+
   @override
   void dispose() {
     _removeOverlay();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final uId = await SessionService.getUserId();
+      final fetched = await ApiService.getNotifications(userId: uId);
+      if (!mounted) return;
+      setState(() {
+        userId = uId;
+        notifications = (fetched['notifications'] as List<dynamic>?) ?? [];
+      });
+    } catch (e) {
+      debugPrint("Notifications error: $e");
+    }
   }
 
   static const List<_NavItem> navItems = [
@@ -71,11 +85,32 @@ class _AppShellState extends State<AppShell> {
     _NavItem('Profile', Icons.person_outline, '/profile'),
     _NavItem('Help', Icons.help_outline, '/help'),
   ];
+
+  Future<void> _handleSearchChanged(String value) async {
+    if (!widget.enableSearch) return;
+    if (value.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      _removeOverlay();
+      return;
+    }
+    setState(() {
+      _isSearching = true;
+    });
+    final results = await ApiService.searchPatients(value);
+    if (!mounted) return;
+    setState(() {
+      _searchResults = results;
+      _isSearching = false;
+    });
+    _showOverlay();
+  }
+
   void _showOverlay() {
     _removeOverlay();
-
     final overlay = Overlay.of(context);
-
     _overlayEntry = OverlayEntry(
       builder: (context) {
         return Positioned(
@@ -83,65 +118,62 @@ class _AppShellState extends State<AppShell> {
           child: CompositedTransformFollower(
             link: _layerLink,
             showWhenUnlinked: false,
-            offset: const Offset(0, 56),
+            offset: const Offset(0, 48),
             child: Material(
-              elevation: 20,
-              borderRadius: BorderRadius.circular(12),
+              elevation: 8,
+              borderRadius: AppRadius.borderMd,
               child: Container(
-                constraints: const BoxConstraints(
-                  maxHeight: 250,
-                ),
+                constraints: const BoxConstraints(maxHeight: 250),
                 decoration: BoxDecoration(
                   color: ThemeColors.card(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: ThemeColors.border(context),
-                  ),
+                  borderRadius: AppRadius.borderMd,
+                  border: Border.all(color: ThemeColors.border(context)),
                 ),
                 child: _isSearching
                     ? const Padding(
                   padding: EdgeInsets.all(16),
                   child: Center(
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
                     : _searchResults.isEmpty
-                    ? const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Text("No patients found"),
+                    ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'No patient cases found.',
+                    style: AppTypography.caption(context),
                   ),
                 )
-                    : ListView.builder(
-                  padding: EdgeInsets.zero,
+                    : ListView.separated(
                   shrinkWrap: true,
                   itemCount: _searchResults.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: ThemeColors.border(context),
+                  ),
                   itemBuilder: (context, index) {
-                    final patient = _searchResults[index];
-
+                    final item = _searchResults[index];
                     return ListTile(
-                      leading: const Icon(Icons.person),
+                      dense: true,
                       title: Text(
-                        patient["patient_name"] ?? "Unknown",
+                        item['patient_name'] ?? '',
+                        style: AppTypography.label(context),
                       ),
                       subtitle: Text(
-                        patient["created_at"] ?? "",
+                        'ID: ${item['patient_id']} • Grade: ${item['grade'] ?? 'N/A'}',
+                        style: AppTypography.caption(context),
                       ),
-                      onTap: () async {
-
+                      trailing: AppChip(
+                        label: item['severity'] ?? 'Normal',
+                        variant: _getSeverityVariant(item['severity']),
+                      ),
+                      onTap: () {
                         _removeOverlay();
-                        _searchController.clear();
-
-                        final report = await ApiService.getReportById(
-                          patient["id"],
-                        );
-
-                        if (!mounted) return;
-
-                        Navigator.of(this.context).pushNamed(
-                          "/reports",
+                        Navigator.pushNamed(
+                          context,
+                          '/reports',
                           arguments: {
-                            "analysisData": report,
+                            'analysisData': item,
                           },
                         );
                       },
@@ -154,746 +186,686 @@ class _AppShellState extends State<AppShell> {
         );
       },
     );
-
     overlay.insert(_overlayEntry!);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
-
-    return Scaffold(
-      backgroundColor: ThemeColors.background(context),
-
-      drawer: isMobile ? _buildDrawer() : null,
-
-      body: Row(
-        children: [
-          if (!isMobile && sidebarOpen)
-            _buildDesktopSidebar(),
-
-          Expanded(
-            child: Column(
-              children: [
-                _buildTopBar(isMobile),
-
-                Expanded(
-                  child: SelectionArea(
-                    child: widget.child,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  Future<void> _loadNotifications() async {
-
-    userId = await SessionService.getUserId();
-
-    final result = await ApiService.getNotifications(
-      userId: userId,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-
-      setState(() {
-        notifications = result['notifications'];
-      });
-
-    }
-
-  }
-  Widget _buildNotificationIcon(String type) {
-
-    switch (type) {
-
-      case 'success':
-        return const CircleAvatar(
-          radius: 20,
-          backgroundColor: Color(0xFFE8F5E9),
-          child: Icon(
-            Icons.check_circle,
-            color: Colors.green,
-            size: 22,
-          ),
-        );
-
-      case 'warning':
-        return const CircleAvatar(
-          radius: 20,
-          backgroundColor: Color(0xFFFFF3E0),
-          child: Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 22,
-          ),
-        );
-
-      case 'error':
-        return const CircleAvatar(
-          radius: 20,
-          backgroundColor: Color(0xFFFFEBEE),
-          child: Icon(
-            Icons.error,
-            color: Colors.red,
-            size: 22,
-          ),
-        );
-
+  AppChipVariant _getSeverityVariant(String? severity) {
+    switch (severity?.toLowerCase()) {
+      case 'severe':
+        return AppChipVariant.error;
+      case 'moderate':
+        return AppChipVariant.warning;
+      case 'mild':
+      case 'normal':
+        return AppChipVariant.success;
       default:
-        return const CircleAvatar(
-          radius: 20,
-          backgroundColor: Color(0xFFE3F2FD),
-          child: Icon(
-            Icons.info,
-            color: Color(0xFF2563EB),
-            size: 22,
-          ),
-        );
-
+        return AppChipVariant.info;
     }
-
   }
+
+  Widget _buildNotificationIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'analysis_complete':
+      case 'success':
+        return AppIconContainer(
+          icon: Icons.check_circle_outline,
+          size: AppIconSize.md,
+          color: ThemeColors.success(context),
+          backgroundColor: ThemeColors.successContainer(context),
+        );
+      case 'warning':
+        return AppIconContainer(
+          icon: Icons.warning_amber_outlined,
+          size: AppIconSize.md,
+          color: ThemeColors.warning(context),
+          backgroundColor: ThemeColors.warningContainer(context),
+        );
+      case 'error':
+        return AppIconContainer(
+          icon: Icons.error_outline,
+          size: AppIconSize.md,
+          color: ThemeColors.error(context),
+          backgroundColor: ThemeColors.errorContainer(context),
+        );
+      default:
+        return AppIconContainer(
+          icon: Icons.info_outline,
+          size: AppIconSize.md,
+          color: ThemeColors.info(context),
+          backgroundColor: ThemeColors.infoContainer(context),
+        );
+    }
+  }
+
   int get unreadNotificationCount {
-
-    return notifications.where((notification) {
-
-      return notification['is_read'] == false;
-
-    }).length;
-
+    return notifications.where((notification) => notification['is_read'] == false).length;
   }
 
   Widget _buildTopBar(bool isMobile) {
-    return
-      Container(
-        constraints: BoxConstraints(
-          minHeight: Responsive.topBarHeight(context),
-        ),
-        decoration:  BoxDecoration(
-          color: ThemeColors.card(context),
-          border: Border(
-            bottom: BorderSide(
-              color: ThemeColors.border(context),
-            ),
-          ),
-        ),
+    return Container(
+      margin: EdgeInsets.fromLTRB(
+        Responsive.shellPadding(context),
+        Responsive.shellPadding(context),
+        Responsive.shellPadding(context),
+        0,
+      ),
+      constraints: BoxConstraints(
+        minHeight: Responsive.topBarHeight(context),
+      ),
+      decoration: BoxDecoration(
+        color: ThemeColors.card(context),
+        borderRadius: AppRadius.borderLg,
+        border: Border.all(color: ThemeColors.border(context)),
+        boxShadow: ThemeColors.shadowSm(context),
+      ),
+      child: ClipRRect(
+        borderRadius: AppRadius.borderLg,
         child: SafeArea(
           bottom: false,
-          child: Row(
-            children: [
-              Builder(
-                builder: (context) {
-                  return IconButton(
-                    icon: Icon(
-                      Icons.menu,
-                      size: 30,
-                      color: ThemeColors.text(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                // Menu Button OR Back Arrow (Mobile Search)
+                if (isMobile && _mobileSearchOpen)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: ThemeColors.surfaceVariant(context),
+                      borderRadius: AppRadius.borderMd,
+                      border: Border.all(color: ThemeColors.border(context)),
                     ),
-                    onPressed: () {
-                      if (isMobile) {
-                        Scaffold.of(context).openDrawer();
-                      } else {
+                    child: IconButton(
+                      splashRadius: 20,
+                      icon: Icon(
+                        Icons.arrow_back,
+                        size: 20,
+                        color: ThemeColors.text(context),
+                      ),
+                      onPressed: () {
                         setState(() {
-                          sidebarOpen = !sidebarOpen;
+                          _mobileSearchOpen = false;
+                          _searchController.clear();
+                          _searchResults.clear();
                         });
-                      }
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Text(
-                  widget.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: Responsive.appTitleFont(context),
-                    fontWeight: FontWeight.w700,
-                    color: ThemeColors.text(context),
+                        _removeOverlay();
+                      },
+                    ),
+                  )
+                else
+                  Container(
+                    decoration: BoxDecoration(
+                      color: ThemeColors.surfaceVariant(context),
+                      borderRadius: AppRadius.borderMd,
+                      border: Border.all(color: ThemeColors.border(context)),
+                    ),
+                    child: IconButton(
+                      splashRadius: 20,
+                      icon: Icon(
+                        Icons.menu_rounded,
+                        size: 20,
+                        color: ThemeColors.text(context),
+                      ),
+                      onPressed: () {
+                        if (isMobile) {
+                          setState(() {
+                            mobileSidebarOpen = !mobileSidebarOpen;
+                          });
+                        } else {
+                          setState(() {
+                            sidebarOpen = !sidebarOpen;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: isMobile && _mobileSearchOpen
+                        ? CompositedTransformTarget(
+                            key: const ValueKey('mobile-search-target'),
+                            link: _layerLink,
+                            child: TextField(
+                              controller: _searchController,
+                              autofocus: true,
+                              style: AppTypography.body(context),
+                              onChanged: _handleSearchChanged,
+                              decoration: InputDecoration(
+                                hintText: 'Search patients...',
+                                hintStyle: AppTypography.caption(context),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          )
+                        : Row(
+                            key: const ValueKey('page-title-row'),
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.title,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: AppTypography.sectionTitle(context),
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
-              ),
+                if (!isMobile) ...[
+                  CompositedTransformTarget(
+                    link: _layerLink,
+                    child: SizedBox(
+                      width: Responsive.searchWidth(context) - 40,
+                      child: Container(
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: ThemeColors.inputFill(context),
+                          borderRadius: AppRadius.borderMd,
+                          border: Border.all(color: ThemeColors.inputBorder(context)),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: AppTypography.body(context),
+                          onChanged: _handleSearchChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Search patients, cases...',
+                            hintStyle: AppTypography.caption(context),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              size: 18,
+                              color: ThemeColors.secondaryText(context),
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                if (isMobile && !_mobileSearchOpen)
+                  HoverIconButton(
+                    onTap: () {
+                      setState(() {
+                        _mobileSearchOpen = true;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: ThemeColors.surfaceVariant(context),
+                        borderRadius: AppRadius.borderMd,
+                        border: Border.all(color: ThemeColors.border(context)),
+                      ),
+                      child: Icon(
+                        Icons.search,
+                        size: 20,
+                        color: ThemeColors.text(context),
+                      ),
+                    ),
+                  ),
 
-
-              if (!isMobile) ...[
-                CompositedTransformTarget(
-                  link: _layerLink,
-                  child: SizedBox(
-                    width: Responsive.searchWidth(context),
+                if (isMobile && !_mobileSearchOpen) const SizedBox(width: 14),
+                if (!(isMobile && _mobileSearchOpen))
+                  HoverIconButton(
+                    onTap: () async {
+                      await _loadNotifications();
+                      await ApiService.markNotificationsAsRead(userId: userId);
+                      await _loadNotifications();
+                      if (!mounted) return;
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            backgroundColor: ThemeColors.card(context),
+                            insetPadding: const EdgeInsets.all(24),
+                            shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
+                            title: Row(
+                              children: [
+                                Icon(
+                                  Icons.notifications_none_outlined,
+                                  color: ThemeColors.primary(context),
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Notifications',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.sectionTitle(context),
+                                  ),
+                                ),
+                                AppChip(
+                                  label: notifications.length.toString(),
+                                  variant: AppChipVariant.info,
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 20),
+                                  splashRadius: 20,
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                            content: SizedBox(
+                              width: Responsive.maxDialogWidth(context),
+                              child: notifications.isEmpty
+                                  ? Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Center(
+                                  child: Text(
+                                    'No notifications yet.',
+                                    style: AppTypography.body(context),
+                                  ),
+                                ),
+                              )
+                                  : SizedBox(
+                                height: 350,
+                                child: ListView.separated(
+                                  itemCount: notifications.length,
+                                  separatorBuilder: (context, index) => const Divider(height: 16),
+                                  itemBuilder: (context, index) {
+                                    final notification = notifications[index];
+                                    return Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: ThemeColors.surfaceVariant(context),
+                                        borderRadius: AppRadius.borderMd,
+                                        border: Border.all(color: ThemeColors.border(context)),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          _buildNotificationIcon(notification['type'] ?? 'info'),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  notification['title'] ?? '',
+                                                  style: AppTypography.label(context),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  notification['message'] ?? '',
+                                                  style: AppTypography.caption(context),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  notification['created_at'] ?? '',
+                                                  style: AppTypography.caption(context).copyWith(
+                                                    color: ThemeColors.mutedText(context),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         Container(
-                          height: 48,
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: ThemeColors.inputFill(context),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: ThemeColors.border(context),
-                            ),
+                            color: ThemeColors.surfaceVariant(context),
+                            borderRadius: AppRadius.borderMd,
+                            border: Border.all(color: ThemeColors.border(context)),
                           ),
-                          child:
-                          TextField(
-                            controller: _searchController,
-
-                            style: TextStyle(
-                              color: ThemeColors.text(context),
-                            ),
-
-                            onChanged: (value) async {
-                              if (!widget.enableSearch) return;
-
-                              if (value.trim().isEmpty) {
-                                setState(() {
-                                  _searchResults = [];
-                                  _isSearching = false;
-                                });
-                                return;
-                              }
-
-                              setState(() {
-                                _isSearching = true;
-                              });
-
-                              final results = await ApiService.searchPatients(value);
-
-                              if (!mounted) return;
-
-                              setState(() {
-                                _searchResults = results;
-                                _isSearching = false;
-                              });
-                              _showOverlay();
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Search...',
-                              hintStyle: TextStyle(
-                                color: ThemeColors.secondaryText(context),
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: ThemeColors.secondaryText(context),
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                            ),
+                          child: Icon(
+                            Icons.notifications_none_outlined,
+                            size: 20,
+                            color: ThemeColors.text(context),
                           ),
                         ),
-
-
-
-                        ],
-                    ),   // Stack
-                  ),     // SizedBox
-                ),       // CompositedTransformTarget
-
-                const SizedBox(width: 20),
-              ],
-
-              HoverIconButton(
-                onTap: () async {
-
-                  await _loadNotifications();
-                  await ApiService.markNotificationsAsRead(
-                    userId: userId,
-                  );
-                  await _loadNotifications();
-                  if (!mounted) return;
-
-                  showDialog(
-
-                    context: context,
-
-                    builder: (context) {
-
-                      return AlertDialog(
-                        backgroundColor: ThemeColors.card(context),
-
-                        insetPadding: const EdgeInsets.all(24),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-
-                        title: Row(
-                          children: [
-
-                            const Icon(
-                              Icons.notifications,
-                              color: Color(0xFF2563EB),
-                              size: 26,
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            const Text(
-                              'Notifications',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
+                        if (unreadNotificationCount > 0)
+                          Positioned(
+                            right: -4,
+                            top: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB),
-                                borderRadius: BorderRadius.circular(20),
+                                color: ThemeColors.error(context),
+                                shape: BoxShape.circle,
                               ),
                               child: Text(
-                                notifications.length.toString(),
+                                unreadNotificationCount.toString(),
                                 style: const TextStyle(
                                   color: Colors.white,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
+                          ),
+                      ],
+                    ),
+                  ),
+                if (!(isMobile && _mobileSearchOpen))
+                  const SizedBox(width: 14),
 
+                // User Profile & Logout Popover
+                if (!(isMobile && _mobileSearchOpen))
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'profile') {
+                        Navigator.pushNamed(context, '/profile');
+                      } else if (value == 'logout') {
+                        await SessionService.logout();
+                        if (!mounted) return;
+                        Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'profile',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 18, color: ThemeColors.text(context)),
                             const SizedBox(width: 10),
-
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              splashRadius: 20,
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                            ),
-
+                            Text('View Profile', style: AppTypography.body(context)),
                           ],
                         ),
-
-                        content: SizedBox(
-                          width: 420,
-                          child: notifications.isEmpty
-                              ? const Padding(
-                            padding: EdgeInsets.all(20),
-                            child: Center(
-                              child: Text(
-                                'No notifications yet.',
-                              ),
-                            ),
-                          )
-                              : SizedBox(
-                            height: 350,
-                            child: ListView.separated(
-
-                              itemCount: notifications.length,
-
-                              separatorBuilder: (context, index) =>
-                              const Divider(height: 24),
-
-                              itemBuilder: (context, index) {
-
-                                final notification =
-                                notifications[index];
-
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius: BorderRadius.circular(16),
-
-                                    border: Border.all(
-                                      color: ThemeColors.border(context),
-                                    ),
-
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-
-                                      _buildNotificationIcon(
-                                        notification['type'] ?? 'info',
-                                      ),
-                                      const SizedBox(width: 14),
-
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-
-                                            Text(
-                                              notification['title'],
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: ThemeColors.text(context),
-                                              ),
-                                            ),
-
-                                            const SizedBox(height: 6),
-
-                                            Text(
-                                              notification['message'],
-                                              style: TextStyle(
-                                                color: ThemeColors.secondaryText(context),
-                                              ),
-                                            ),
-
-                                            const SizedBox(height: 10),
-
-                                            Row(
-                                              children: [
-
-                                                Icon(
-                                                  Icons.access_time,
-                                                  size: 14,
-                                                  color: ThemeColors.secondaryText(context),
-                                                ),
-
-                                                const SizedBox(width: 5),
-
-                                                Text(
-                                                  notification['created_at'],
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: ThemeColors.secondaryText(context),
-                                                  ),
-                                                ),
-
-                                              ],
-                                            ),
-
-                                          ],
-                                        ),
-                                      ),
-
-                                    ],
-                                  ),
-                                );
-
-                              },
-
-                            ),
-                          ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem<String>(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout_outlined, size: 18, color: ThemeColors.error(context)),
+                            const SizedBox(width: 10),
+                            Text('Logout', style: AppTypography.body(context).copyWith(color: ThemeColors.error(context))),
+                          ],
                         ),
-
-                      );
-
-                    },
-
-                  );
-
-                },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-
-                    Container(
-                      padding: const EdgeInsets.all(12),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: ThemeColors.card(context),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: ThemeColors.border(context),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 15,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
+                        color: ThemeColors.surfaceVariant(context),
+                        borderRadius: AppRadius.borderMd,
+                        border: Border.all(color: ThemeColors.border(context)),
                       ),
-                      child: const Icon(
-                        Icons.notifications_none,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-
-                    if (unreadNotificationCount > 0)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            unreadNotificationCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      child: isMobile
+                          ? CircleAvatar(
+                        radius: Responsive.profileAvatarRadius(context),
+                        backgroundColor: ThemeColors.primary(context),
+                        child: Text(
+                          widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-
-              InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/profile',
-                    );
-                  },
-                  child:
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: isMobile
-                        ? CircleAvatar(
-                      radius: Responsive.profileAvatarRadius(context),
-                      backgroundColor: const Color(0xFF2563EB),
-                      child: Text(
-                        widget.userName.isNotEmpty
-                            ? widget.userName[0]
-                            : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                        : SizedBox(
-                      height: 80,
-                      child: Row(
+                      )
+                          : Row(
                         children: [
                           CircleAvatar(
-                            radius: Responsive.profileAvatarRadius(context),
-                            backgroundColor: const Color(0xFF2563EB),
+                            radius: 16,
+                            backgroundColor: ThemeColors.primary(context),
                             child: Text(
-                              widget.userName.isNotEmpty
-                                  ? widget.userName[0]
-                                  : 'U',
+                              widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : 'U',
                               style: const TextStyle(
                                 color: Colors.white,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 widget.userName,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: ThemeColors.text(context),
-                                ),
+                                style: AppTypography.label(context),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.userEmail,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: ThemeColors.secondaryText(context),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
                               Text(
                                 'Orthodontist',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: ThemeColors.secondaryText(context),
-                                ),
+                                style: AppTypography.caption(context),
                               ),
                             ],
                           ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.arrow_drop_down, color: ThemeColors.secondaryText(context), size: 18),
                         ],
                       ),
                     ),
-                  )
-              ),
-            ],
-          ),),
-      );
-  }
-
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: _buildSidebarContent(
-        collapsed: false,
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildDesktopSidebar() {
     return AnimatedContainer(
-      duration: const Duration(
-        milliseconds: 250,
-      ),
+      duration: const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
-      width: sidebarOpen
-          ? Responsive.sidebarWidth(context)
-          : 0,
-      child: Container(
-        color: ThemeColors.card(context),
-        child: Column(
-          children: [
-            Container(
-              height: 90,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
+      width: sidebarOpen ? Responsive.sidebarWidth(context) : 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 0, 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: ThemeColors.card(context),
+            borderRadius: AppRadius.borderLg,
+            border: Border.all(color: ThemeColors.border(context)),
+            boxShadow: ThemeColors.shadowSm(context),
+          ),
+          child: Column(
+            children: [
+              _buildSidebarHeader(),
+              Expanded(
+                child: _buildSidebarContent(collapsed: false),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.auto_awesome,
-                    color: Color(0xFF2563EB),
-                    size: 28,
-                  ),
-
-                  const Expanded(
-                    child: Text(
-                      'SmileSync',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: _buildSidebarContent(
-                collapsed: false,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSidebarContent({
-    required bool collapsed,
-  }) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(
-        vertical: 12,
-      ),
-      children: navItems.map((item) {
-        final selected =
-            widget.currentRoute == item.route;
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 4,
-          ),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-
-            onEnter: (_) {
-              setState(() {
-                hoveredRoute = item.route;
-              });
-            },
-
-            onExit: (_) {
-              setState(() {
-                hoveredRoute = null;
-              });
-            },
-
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-
-              decoration: BoxDecoration(
-                color: selected
-                    ? Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF1E3A8A)
-                    : const Color(0xFFEAF1FF)
-                    : hoveredRoute == item.route
-                    ? ThemeColors.inputFill(context)
-                    : Colors.transparent,
-
-                borderRadius: BorderRadius.circular(14),
+  Widget _buildSidebarHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppIconContainer(
+                icon: Icons.health_and_safety_outlined,
+                size: AppIconSize.md,
               ),
-
-              child: ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                  BorderRadius.circular(14),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SmileSync AI',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: ThemeColors.text(context),
+                      ),
+                    ),
+                    Text(
+                      'Clinical AI System',
+                      style: AppTypography.caption(context),
+                    ),
+                  ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Divider(
+            color: ThemeColors.border(context),
+            height: 1,
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildSidebarContent({required bool collapsed}) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      children: [
+        ...navItems.map((item) {
+          final selected = widget.currentRoute == item.route;
 
-                leading: Icon(
-                  item.icon,
-                  size: Responsive.sidebarIconSize(context),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => hoveredRoute = item.route),
+              onExit: (_) => setState(() => hoveredRoute = null),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFF2563EB)
-                      : ThemeColors.secondaryText(context),
+                      ? ThemeColors.primaryContainer(context)
+                      : hoveredRoute == item.route
+                      ? ThemeColors.surfaceVariant(context)
+                      : Colors.transparent,
+                  borderRadius: AppRadius.borderMd,
                 ),
-
-
-                title: collapsed
-                    ? null
-                    : Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: Responsive.sidebarFont(context),
-                    fontWeight:
-                    selected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
+                child: ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+                  leading: Icon(
+                    item.icon,
+                    size: 20,
                     color: selected
-                        ? const Color(0xFF2563EB)
-                        : ThemeColors.text(context),
+                        ? ThemeColors.primary(context)
+                        : ThemeColors.secondaryText(context),
+                  ),
+                  title: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected
+                          ? ThemeColors.primary(context)
+                          : ThemeColors.text(context),
+                    ),
+                  ),
+                  onTap: () {
+                    if (widget.currentRoute == item.route) return;
+                    Navigator.pushReplacementNamed(context, item.route);
+                  },
+                ),
+              ),
+            ),
+          );
+        }),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Divider(height: 1),
+        ),
+        ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+          leading: Icon(
+            Icons.logout_outlined,
+            size: 20,
+            color: ThemeColors.error(context),
+          ),
+          title: Text(
+            'Logout System',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: ThemeColors.error(context),
+            ),
+          ),
+          onTap: () async {
+            await SessionService.logout();
+            if (!mounted) return;
+            Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = Responsive.isPhone(context);
+
+    return Scaffold(
+      backgroundColor: ThemeColors.background(context),
+      body: Stack(
+        children: [
+          Row(
+            children: [
+              if (!isMobile) _buildDesktopSidebar(),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopBar(isMobile),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.all(Responsive.shellInnerPadding(context)),
+                        child: widget.child,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (isMobile && mobileSidebarOpen) ...[
+            GestureDetector(
+              onTap: () => setState(() => mobileSidebarOpen = false),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.4),
+              ),
+            ),
+            SafeArea(
+              child: SizedBox(
+                width: 280,
+                child: Container(
+                  color: ThemeColors.card(context),
+                  child: Column(
+                    children: [
+                      _buildSidebarHeader(),
+                      Expanded(
+                        child: _buildSidebarContent(collapsed: false),
+                      ),
+                    ],
                   ),
                 ),
-
-                onTap: () {
-                  if (widget.currentRoute ==
-                      item.route) {
-                    return;
-                  }
-
-                  Navigator.pushReplacementNamed(
-                    context,
-                    item.route,
-                  );
-                },
-              ),),),
-        );
-      }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -903,9 +875,5 @@ class _NavItem {
   final IconData icon;
   final String route;
 
-  const _NavItem(
-      this.label,
-      this.icon,
-      this.route,
-      );
+  const _NavItem(this.label, this.icon, this.route);
 }

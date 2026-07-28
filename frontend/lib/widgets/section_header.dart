@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../theme/theme_colors.dart';
+import '../theme/app_theme.dart';
 
-/// Section title styled with [AppTheme.appBarTheme.titleTextStyle].
+/// Standardized Section Header with page/section typography hierarchy.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -8,7 +10,7 @@ class SectionHeader extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.padding,
-    this.spacing = 8,
+    this.spacing = 6,
   });
 
   final String title;
@@ -17,35 +19,28 @@ class SectionHeader extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double spacing;
 
-  TextStyle _titleStyle(BuildContext context) {
-    return const TextStyle(
-      fontSize: 28,
-      fontWeight: FontWeight.bold,
-      color: Color(0xFF0F172A),
-    );
-  }
-
-  TextStyle _subtitleStyle(BuildContext context) {
-    return const TextStyle(
-      fontSize: 15,
-      height: 1.6,
-      color: Color(0xFF64748B),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final content = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: _titleStyle(context)),
+              Text(
+                title,
+                style: AppTypography.pageTitle(context),
+              ),
               if (subtitle != null) ...[
                 SizedBox(height: spacing),
-                Text(subtitle!, style: _subtitleStyle(context)),
+                Text(
+                  subtitle!,
+                  style: AppTypography.body(context).copyWith(
+                    color: ThemeColors.secondaryText(context),
+                  ),
+                ),
               ],
             ],
           ),

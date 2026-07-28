@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../services/session_service.dart';
 class ApiService {
@@ -9,7 +8,13 @@ class ApiService {
   // BASE URL
   // -----------------------------------
 
-  static const String baseUrl = 'http://127.0.0.1:5000';
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:5000';
+    } else {
+      return 'http://192.168.43.151:5000';
+    }
+  }
 
 
   static Future<Map<String, String>> _authHeaders() async {

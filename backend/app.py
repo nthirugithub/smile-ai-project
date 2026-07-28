@@ -907,7 +907,6 @@ def predict():
 
         strengths = reasoning["strengths"]
         improvements = reasoning["improvements"]
-        priority = reasoning["priority"]
 
         # -------------------------------------------------
         # TREATMENT ENGINE
@@ -930,6 +929,7 @@ def predict():
             treatment_output,
             severity,
         )
+        priority = treatment_priority
 
         # -------------------------------------------------
         # ENCODE OVERLAY IMAGE
@@ -1076,7 +1076,6 @@ def predict():
             "clinical_findings": clinical_findings,
             "recommendations": recommendations,
             "clinical_interpretation": clinical_interpretation,
-            "treatment_priority": treatment_priority,
             "overlay_image": overlay_base64,
             "overlay_image_path": annotated_path,
         })

@@ -1,9 +1,186 @@
+from __future__ import annotations
+
+from typing import Any, Dict, Mapping
 
 
 class SmileScoreEngine:
+    """
+    Long-term smile scoring engine.
+
+    Design goals:
+    - score the smile itself, not classifier certainty
+    - use continuous, smooth scoring instead of abrupt if/elif jumps
+    - reflect perceptual psychology: symmetry and midline matter most
+    - stay stable, calibratable, and easy to extend later
+    - keep the public API unchanged for the rest of the app
+    """
+
+    # Perceptual importance weights.
+    # Higher = more influence on the final score.
+    FEATURE_WEIGHTS = {
+        "smile_symmetry": 1.00,
+        "midline_deviation": 0.95,
+        "smile_arc": 0.85,
+        "gingival_display": 0.75,
+        "smile_width": 0.70,
+        "buccal_corridor": 0.60,
+        "lip_opening": 0.50,
+        "face_ratio": 0.45,
+    }
+
+    CORE_FEATURES = (
+        "smile_symmetry",
+        "midline_deviation",
+        "smile_arc",
+        "gingival_display",
+    )
 
     def __init__(self):
         pass
+
+    # -----------------------------
+    # Basic helpers
+    # -----------------------------
+
+    @staticmethod
+    def _clamp(value: float, low: float = 0.0, high: float = 10.0) -> float:
+        return max(low, min(high, value))
+
+    def _get_feature(self, features: Mapping[str, Any], key: str, default: float = 0.0) -> float:
+        try:
+            value = features.get(key, default)
+            if value is None:
+                return float(default)
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
+    @staticmethod
+    def _weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> float:
+        total_weight = 0.0
+        weighted_sum = 0.0
+
+        for name, score in scores.items():
+            weight = float(weights.get(name, 0.0))
+            total_weight += weight
+            weighted_sum += score * weight
+
+        if total_weight == 0:
+            return 0.0
+
+        return weighted_sum / total_weight
+
+    @staticmethod
+    def _score_band(
+        value: float,
+        ideal_min: float,
+        ideal_max: float,
+        hard_min: float,
+        hard_max: float,
+    ) -> float:
+        """
+        Ideal range gets 10.
+        Score falls smoothly to 0 as value approaches hard limits.
+        """
+        if value is None:
+            return 0.0
+
+        if ideal_min <= value <= ideal_max:
+            return 10.0
+
+        if value < ideal_min:
+            if value <= hard_min:
+                return 0.0
+            return 10.0 * (value - hard_min) / (ideal_min - hard_min)
+
+        if value >= hard_max:
+            return 0.0
+
+        return 10.0 * (hard_max - value) / (hard_max - ideal_max)
+
+    @staticmethod
+    def _score_lower_better(
+        value: float,
+        ideal_max: float,
+        hard_max: float,
+    ) -> float:
+        """
+        Lower is better.
+        10 if value <= ideal_max.
+        Falls smoothly to 0 by hard_max.
+        """
+        if value is None:
+            return 0.0
+
+        if value <= ideal_max:
+            return 10.0
+
+        if value >= hard_max:
+            return 0.0
+
+        return 10.0 * (hard_max - value) / (hard_max - ideal_max)
+
+    @staticmethod
+    def _score_target(
+        value: float,
+        target: float,
+        ideal_tolerance: float,
+        hard_tolerance: float,
+    ) -> float:
+        """
+        Best near a target value.
+        10 inside ideal tolerance, falls smoothly toward 0 by hard tolerance.
+        """
+        if value is None:
+            return 0.0
+
+        distance = abs(value - target)
+
+        if distance <= ideal_tolerance:
+            return 10.0
+
+        if distance >= hard_tolerance:
+            return 0.0
+
+        return 10.0 * (hard_tolerance - distance) / (hard_tolerance - ideal_tolerance)
+
+    def _extract_quality_score(
+        self,
+        features: Mapping[str, Any],
+        severity_analysis: Mapping[str, Any],
+    ) -> float:
+        """
+        Returns a normalized quality score in [0, 1].
+        Accepts 0..1 or 0..100 formats defensively.
+        """
+        candidates = []
+
+        # Common places the quality score may exist
+        candidates.append(features.get("quality_score"))
+        candidates.append(severity_analysis.get("quality_score"))
+
+        details = severity_analysis.get("details")
+        if isinstance(details, Mapping):
+            candidates.append(details.get("quality_score"))
+
+        for raw in candidates:
+            if raw is None:
+                continue
+            try:
+                q = float(raw)
+            except (TypeError, ValueError):
+                continue
+
+            if q > 1.5:
+                q = q / 100.0
+
+            return self._clamp(q, 0.0, 1.0)
+
+        return 1.0
+
+    # -----------------------------
+    # Main scoring logic
+    # -----------------------------
 
     def calculate_score(
         self,
@@ -11,120 +188,112 @@ class SmileScoreEngine:
         probabilities,
         severity_analysis,
     ):
+        """
+        Keep the signature unchanged for app.py.
+        `probabilities` is accepted for compatibility but not used in scoring.
+        """
+        features = features or {}
+        severity_analysis = severity_analysis or {}
 
-        normal = float(probabilities[0])
-        mild = float(probabilities[1])
-        moderate = float(probabilities[2])
+        # Extract normalized features
+        smile_width = self._get_feature(features, "smile_width")
+        lip_opening = self._get_feature(features, "lip_opening")
+        face_ratio = self._get_feature(features, "face_ratio")
+        midline_deviation = self._get_feature(features, "midline_deviation")
+        smile_symmetry = self._get_feature(features, "smile_symmetry")
+        smile_arc = self._get_feature(features, "smile_arc")
+        gingival_display = self._get_feature(features, "gingival_display")
+        buccal_corridor = self._get_feature(features, "buccal_corridor")
 
-        assessment = severity_analysis["assessment"]
+        quality_score = self._extract_quality_score(features, severity_analysis)
 
-        score = 5.0
+        # 0–10 subscores, each based on a perceptual rule
+        feature_scores = {
+            "smile_width": self._score_band(
+                smile_width,
+                ideal_min=0.46,
+                ideal_max=0.55,
+                hard_min=0.35,
+                hard_max=0.65,
+            ),
+            "lip_opening": self._score_band(
+                lip_opening,
+                ideal_min=0.06,
+                ideal_max=0.11,
+                hard_min=0.02,
+                hard_max=0.18,
+            ),
+            "face_ratio": self._score_band(
+                face_ratio,
+                ideal_min=0.82,
+                ideal_max=0.92,
+                hard_min=0.70,
+                hard_max=1.00,
+            ),
+            "midline_deviation": self._score_lower_better(
+                midline_deviation,
+                ideal_max=0.003,
+                hard_max=0.020,
+            ),
+            "smile_symmetry": self._score_lower_better(
+                smile_symmetry,
+                ideal_max=0.010,
+                hard_max=0.050,
+            ),
+            "smile_arc": self._score_target(
+                smile_arc,
+                target=0.015,
+                ideal_tolerance=0.018,
+                hard_tolerance=0.060,
+            ),
+            "gingival_display": self._score_lower_better(
+                gingival_display,
+                ideal_max=0.010,
+                hard_max=0.050,
+            ),
+            "buccal_corridor": self._score_band(
+                buccal_corridor,
+                ideal_min=0.25,
+                ideal_max=0.35,
+                hard_min=0.10,
+                hard_max=0.60,
+            ),
+        }
 
-        # -----------------------------
-        # AI Prediction Contribution
-        # -----------------------------
+        # Overall harmony score across all features
+        overall_score = self._weighted_average(feature_scores, self.FEATURE_WEIGHTS)
 
-        score += normal * 4.1
-        score += mild * 2.8
-        score += moderate * 1.2
+        # Core perceptual features carry extra weight in human judgment
+        core_weights = {
+            "smile_symmetry": 0.34,
+            "midline_deviation": 0.30,
+            "smile_arc": 0.18,
+            "gingival_display": 0.18,
+        }
+        core_scores = {k: feature_scores[k] for k in self.CORE_FEATURES}
+        core_score = self._weighted_average(core_scores, core_weights)
 
-        # -----------------------------
-        # Smile Width
-        # -----------------------------
+        # Blend overall harmony with the core perceptual signal
+        score = (0.68 * overall_score) + (0.32 * core_score)
 
-        width_penalty = assessment["smile_width"]["penalty"]
+        # Reliability adjustment:
+        # lower image quality reduces confidence in the visual estimate,
+        # but does not inflate the score.
+        score -= (1.0 - quality_score) * 0.9
 
-        if width_penalty == 0:
-            score += 0.35
-        elif width_penalty <= 5:
-            score += 0.15
-        else:
-            score -= 0.30
+        # Weakest-link penalty:
+        # if one of the core aesthetic signals is poor, humans perceive it strongly.
+        weakest_core = min(core_scores.values()) if core_scores else 10.0
+        if weakest_core < 6.5:
+            score -= (6.5 - weakest_core) * 0.35
 
-        # -----------------------------
-        # Symmetry
-        # -----------------------------
+        # Gentle compression near the upper end so 9.4 stays rare
+        # and only truly balanced smiles reach the cap.
+        if score > 8.8:
+            score -= (score - 8.8) * 0.18
 
-        symmetry_penalty = assessment["symmetry"]["penalty"]
-
-        if symmetry_penalty == 0:
-            score += 0.45
-        elif symmetry_penalty <= 5:
-            score += 0.20
-        else:
-            score -= 0.35
-
-        # -----------------------------
-        # Midline
-        # -----------------------------
-
-        midline_penalty = assessment["midline"]["penalty"]
-
-        if midline_penalty == 0:
-            score += 0.35
-        elif midline_penalty <= 5:
-            score += 0.15
-        else:
-            score -= 0.30
-
-        # -----------------------------
-        # Smile Arc
-        # -----------------------------
-
-        arc_penalty = assessment["smile_arc"]["penalty"]
-
-        if arc_penalty == 0:
-            score += 0.30
-        elif arc_penalty <= 5:
-            score += 0.15
-        else:
-            score -= 0.20
-
-        # -----------------------------
-        # Gingival Display
-        # -----------------------------
-        
-
-        gingival_penalty = assessment["gingival_display"]["penalty"]
-
-        if gingival_penalty == 0:
-            score += 0.25
-        elif gingival_penalty <= 5:
-            score += 0.10
-        else:
-            score -= 0.20
-
-        # -----------------------------
-        # Buccal Corridor
-        # -----------------------------
-
-        corridor_penalty = assessment["buccal_corridor"]["penalty"]
-
-        if corridor_penalty == 0:
-            score += 0.30
-        elif corridor_penalty <= 5:
-            score += 0.15
-        else:
-            score -= 0.25
-
-        # -----------------------------
-        # Face Ratio
-        # -----------------------------
-
-        face_ratio_penalty = assessment["face_ratio"]["penalty"]
-
-        if face_ratio_penalty == 0:
-            score += 0.20
-        elif face_ratio_penalty <= 5:
-            score += 0.10
-        else:
-            score -= 0.20
-
-        # -----------------------------
-        # Clamp
-        # -----------------------------
-
-        score = max(4.0, min(score, 9.4))
+        # Final clamp to your current grading range
+        score = self._clamp(score, 4.0, 9.4)
 
         return {
             "smile_score": round(score, 2)

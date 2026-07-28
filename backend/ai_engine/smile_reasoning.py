@@ -87,24 +87,8 @@ class SmileReasoning:
         if not face_ratio_assessment.get("issue", False):
             strengths.append("Pleasant facial proportion")
 
-        # -------------------------
-        # Priority
-        # -------------------------
-
-        if len(improvements) == 0:
-            priority = "Very Low"
-
-        elif len(improvements) <= 2:
-            priority = "Low"
-
-        elif len(improvements) <= 4:
-            priority = "Medium"
-
-        else:
-            priority = "High"
 
         return {
             "strengths": strengths,
             "improvements": improvements,
-            "priority": priority
         }

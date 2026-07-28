@@ -1,16 +1,19 @@
-
 import 'dart:typed_data';
-import '../../widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/theme_colors.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_shell.dart';
+import '../../widgets/app_card.dart';
+import '../../widgets/app_chip.dart';
+import '../../widgets/app_icon_container.dart';
 import '../../widgets/score_gauge.dart';
-import '../../widgets/fade_slide.dart';
 import '../../widgets/loading_overlay.dart';
-import '../../widgets/primary_hover_button.dart';
+import '../../widgets/primary_button.dart';
 import '../../utils/responsive.dart';
+
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
 
@@ -27,43 +30,26 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   String userName = 'User';
   String userEmail = '';
 
-
   Future<void> pickFromCamera() async {
     final ImagePicker picker = ImagePicker();
-
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.camera,
-    );
-
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
     if (image == null) return;
-
     final bytes = await image.readAsBytes();
-
     setState(() {
       selectedImage = image;
-
       selectedImageBytes = bytes;
-
       analysisData = null;
     });
   }
 
   Future<void> pickImage() async {
     final ImagePicker picker = ImagePicker();
-
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-    );
-
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
-
     final bytes = await image.readAsBytes();
-
     setState(() {
       selectedImage = image;
-
       selectedImageBytes = bytes;
-
       analysisData = null;
     });
   }
@@ -71,14 +57,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Future<void> analyzeImage() async {
     if (selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(
-          content: Text(
-            "Please select an image first",
-          ),
-        ),
+        const SnackBar(content: Text("Please select an image first")),
       );
-
       return;
     }
 
@@ -87,13 +67,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     });
 
     try {
-      final userId =
-      await SessionService.getUserId();
-
-      debugPrint("Selected filename: ${selectedImage!.name}");
-
-      final result =
-      await ApiService.analyzeSmile(
+      final userId = await SessionService.getUserId();
+      final result = await ApiService.analyzeSmile(
         selectedImageBytes!,
         selectedImage!.name,
         userId,
@@ -103,40 +78,23 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
       setState(() {
         isLoading = false;
-
         if (result['success']) {
-          analysisData =
-          result['data'];
-          debugPrint("Analysis Data: $analysisData");
+          analysisData = result['data'];
         }
       });
 
       if (!result['success']) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
-
-          SnackBar(
-            content: Text(
-              result['error'],
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['error'] ?? 'Analysis failed')),
         );
       }
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         isLoading = false;
       });
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-
-        SnackBar(
-          content: Text(
-            'Error: $e',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -144,7 +102,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Future<void> loadUserData() async {
     final name = await SessionService.getName();
     final email = await SessionService.getEmail();
-
     setState(() {
       userName = name;
       userEmail = email;
@@ -157,6 +114,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
     return [];
   }
+
   Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map) {
       return value.map((k, v) => MapEntry(k.toString(), v));
@@ -167,7 +125,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void initState() {
     super.initState();
-
     loadUserData();
   }
 
@@ -177,466 +134,296 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final smileScore = analysisData?['smile_score'];
     final grade = analysisData?['grade']?.toString();
     final level = analysisData?['level']?.toString();
-
     final isPhone = Responsive.isPhone(context);
 
-    final strengths = _asStringList(
-      analysisData?['strengths'],
-    );
-
-    final improvements = _asStringList(
-      analysisData?['improvements'],
-    );
-
-    final priority =
-    analysisData?['priority']?.toString();
+    final strengths = _asStringList(analysisData?['strengths']);
+    final improvements = _asStringList(analysisData?['improvements']);
+    final priority = analysisData?['priority']?.toString();
     final recommendations = _asStringList(analysisData?['recommendations']);
-    final features = _asMap(
-      analysisData?['features'],
-    );
+    final features = _asMap(analysisData?['features']);
 
-    return  Stack(
+    return Stack(
       children: [
         AppShell(
           currentRoute: '/analysis',
-          title: 'Analysis',
+          title: 'AI Diagnostic Engine',
           userName: userName,
           userEmail: userEmail,
           enableSearch: true,
-
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(
-              Responsive.pagePadding(context),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FadeSlide(
-                  child: Container(
-                    padding: EdgeInsets.all(
-                      Responsive.cardPadding(context),
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        Responsive.cardRadius(context),
+                // Top Clinical Banner Card
+                AppCard(
+                  color: ThemeColors.primaryContainer(context),
+                  border: BorderSide(color: ThemeColors.primary(context).withValues(alpha: 0.2)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Clinical AI Diagnostic Suite',
+                        style: AppTypography.pageTitle(context).copyWith(
+                          color: ThemeColors.onPrimaryContainer(context),
+                        ),
                       ),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Upload patient smile imagery to extract high-precision facial landmarks, symmetry metrics, and AI orthodontic assessments.',
+                        style: AppTypography.body(context).copyWith(
+                          color: ThemeColors.secondaryText(context),
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.2),
-                          blurRadius: 35,
-                          offset: const Offset(0, 18),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'AI Smile Analysis Engine',
-                              style: TextStyle(
-                                fontSize: Responsive.titleFont(context),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Upload smile images and generate real-time orthodontic facial symmetry evaluations powered by AI.',
-                              style: TextStyle(
-                                fontSize: Responsive.bodyFont(context),
-                                height: 1.7,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(
-                          height: Responsive.sectionSpacing(context),
-                        ),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: PrimaryHoverButton(
-                            onPressed: pickImage,
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.camera_alt),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Start Scan',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
-                SizedBox(
-                  height: Responsive.sectionSpacing(context),
-                ),
+
+                const SizedBox(height: 24),
+
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final availableWidth = constraints.maxWidth;
                     final useSingleColumn = availableWidth < 800;
 
                     return Wrap(
-                      spacing: Responsive.sectionSpacing(context),
-                      runSpacing: Responsive.sectionSpacing(context),
+                      spacing: 24,
+                      runSpacing: 24,
                       children: [
                         SizedBox(
-                          width: useSingleColumn
-                              ? availableWidth
-                              : availableWidth * 0.58,
+                          width: useSingleColumn ? availableWidth : availableWidth * 0.56,
                           child: Column(
                             children: [
-                              FadeSlide(
-                                delay: const Duration(milliseconds: 120),
-                                child: Container(
-                                  padding: EdgeInsets.all(
-                                    Responsive.cardPadding(context),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius: BorderRadius.circular(
-                                      Responsive.cardRadius(context),
+                              AppCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Patient Smile Image Capture',
+                                      style: AppTypography.sectionTitle(context),
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.04,
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(24),
+                                      decoration: BoxDecoration(
+                                        color: ThemeColors.surfaceVariant(context),
+                                        borderRadius: AppRadius.borderMd,
+                                        border: Border.all(
+                                          color: ThemeColors.border(context),
                                         ),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 10),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          AppIconContainer(
+                                            icon: Icons.cloud_upload_outlined,
+                                            size: AppIconSize.lg,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Select or Capture Patient Image',
+                                            style: AppTypography.cardTitle(context),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Supported formats: JPG, PNG • High Resolution Recommended',
+                                            style: AppTypography.caption(context),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final isPhone = Responsive.isPhone(context);
+                                              final availableWidth = constraints.maxWidth;
+                                              final useVertical = isPhone && (availableWidth < 300);
+
+                                              if (useVertical) {
+                                                return Column(
+                                                  children: [
+                                                    PrimaryButton(
+                                                      label: 'Camera',
+                                                      icon: Icons.camera_alt_outlined,
+                                                      variant: PrimaryButtonVariant.outlined,
+                                                      onPressed: pickFromCamera,
+                                                    ),
+                                                    const SizedBox(height: 10),
+                                                    PrimaryButton(
+                                                      label: 'Gallery',
+                                                      icon: Icons.photo_library_outlined,
+                                                      variant: PrimaryButtonVariant.outlined,
+                                                      onPressed: pickImage,
+                                                    ),
+                                                  ],
+                                                );
+                                              }
+
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: PrimaryButton(
+                                                      label: 'Camera',
+                                                      icon: Icons.camera_alt_outlined,
+                                                      variant: PrimaryButtonVariant.outlined,
+                                                      onPressed: pickFromCamera,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: PrimaryButton(
+                                                      label: 'Gallery',
+                                                      icon: Icons.photo_library_outlined,
+                                                      variant: PrimaryButtonVariant.outlined,
+                                                      onPressed: pickImage,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    if (selectedImageBytes != null) ...[
+                                      ClipRRect(
+                                        borderRadius: AppRadius.borderMd,
+                                        child: Container(
+                                          height: isPhone ? 200 : 260,
+                                          width: double.infinity,
+                                          color: ThemeColors.surfaceVariant(context),
+                                          child: Image.memory(
+                                            selectedImageBytes!,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      PrimaryButton(
+                                        label: 'Run AI Diagnostic Scan',
+                                        icon: Icons.analytics_outlined,
+                                        isLoading: isLoading,
+                                        loadingLabel: 'Scanning Image...',
+                                        onPressed: analyzeImage,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
+                              if (features.isNotEmpty) ...[
+                                const SizedBox(height: 20),
+                                AppCard(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          AppIconContainer(
+                                            icon: Icons.straighten_outlined,
+                                            size: isPhone ? AppIconSize.sm : AppIconSize.md,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'Extracted Landmark Metrics',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTypography.sectionTitle(context),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Wrap(
+                                        spacing: 12,
+                                        runSpacing: 12,
+                                        children: [
+                                          _buildMetricTile('Smile Width', features["smile_width"], ThemeColors.info(context)),
+                                          _buildMetricTile('Lip Opening', features["lip_opening"], ThemeColors.success(context)),
+                                          _buildMetricTile('Symmetry', features["smile_symmetry"], ThemeColors.warning(context)),
+                                          _buildMetricTile('Smile Arc', features["smile_arc"], ThemeColors.primary(context)),
+                                          _buildMetricTile('Midline', features["midline_deviation"], ThemeColors.error(context)),
+                                          _buildMetricTile('Buccal Corridor', features["buccal_corridor"], ThemeColors.secondary(context)),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Upload Patient Smile Image',
-                                        style: TextStyle(
-                                          fontSize: Responsive.headingFont(context),
-                                          fontWeight: FontWeight.bold,
-                                          color: ThemeColors.text(context),
-                                        ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(
+                          width: useSingleColumn ? availableWidth : availableWidth * 0.40,
+                          child: analysisData == null
+                              ? AppCard(
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(40),
+                                      child: Column(
+                                        children: [
+                                          AppIconContainer(
+                                            icon: Icons.analytics_outlined,
+                                            size: AppIconSize.lg,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Awaiting Image Scan',
+                                            style: AppTypography.cardTitle(context),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Upload patient image to generate real-time clinical score and symmetry metrics.',
+                                            textAlign: TextAlign.center,
+                                            style: AppTypography.caption(context),
+                                          ),
+                                        ],
                                       ),
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: ThemeColors.inputFill(context),
-                                          borderRadius: BorderRadius.circular(
-                                            Responsive.cardRadius(context),
+                                    ),
+                                  ),
+                                )
+                              : Column(
+                                  children: [
+                                    AppCard(
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'AI Smile Assessment Score',
+                                            style: AppTypography.cardTitle(context),
                                           ),
-                                          border: Border.all(
-                                            color: ThemeColors.border(context),
-                                            width: 2,
+                                          const SizedBox(height: 20),
+                                          SmileScoreGauge(
+                                            score: (smileScore as num?)?.toDouble() ?? 0,
+                                            level: level ?? "",
+                                            size: isPhone ? 180 : 200,
                                           ),
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              padding:
-                                              const EdgeInsets.all(22),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFFDBEAFE,
-                                                ),
-                                                borderRadius:
-                                                BorderRadius.circular(22),
-                                              ),
-                                              child: const Icon(
-                                                Icons.cloud_upload_rounded,
-                                                size: 48,
-                                                color: Color(0xFF2563EB),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 24),
-                                            Text(
-                                              'Choose a smile image',
-                                              style: TextStyle(
-                                                fontSize: Responsive.headingFont(context),
-                                                fontWeight: FontWeight.w700,
-                                                color: ThemeColors.text(context),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              'Supported formats: JPG, PNG • Max 10MB',
-                                              style: TextStyle(
-                                                color: ThemeColors.secondaryText(context),
-                                                fontSize: Responsive.bodyFont(context),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 28),
-
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-
-                                                    onPressed: pickFromCamera,
-
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(
-                                                          0xFF2563EB),
-
-                                                      padding: const EdgeInsets.symmetric(
-                                                        vertical: 20,
-                                                      ),
-
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius
-                                                            .circular(18),
-                                                      ),
-                                                    ),
-
-                                                    icon: const Icon(
-                                                      Icons.camera_alt,
-                                                      color: Colors.white,
-                                                    ),
-
-                                                    label: const Text(
-                                                      'Camera',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-
-                                                const SizedBox(width: 16),
-
-                                                Expanded(
-                                                  child: ElevatedButton.icon(
-
-                                                    onPressed: pickImage,
-
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(
-                                                          0xFF0F172A),
-
-                                                      padding: const EdgeInsets.symmetric(
-                                                        vertical: 20,
-                                                      ),
-
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius
-                                                            .circular(18),
-                                                      ),
-                                                    ),
-
-                                                    icon: const Icon(
-                                                      Icons.photo_library,
-                                                      color: Colors.white,
-                                                    ),
-
-                                                    label: const Text(
-                                                      'Gallery',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      if (selectedImageBytes != null) ...[
-                                        TweenAnimationBuilder<double>(
-                                          duration: const Duration(milliseconds: 700),
-                                          tween: Tween(begin: 0.95, end: 1),
-                                          curve: Curves.easeOut,
-                                          builder: (context, scale, child) {
-                                            return Transform.scale(
-                                              scale: scale,
-                                              child: Opacity(
-                                                opacity: scale,
-                                                child: child,
-                                              ),
-                                            );
-                                          },
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(20),
-                                            child: Image.memory(
-                                              selectedImageBytes!,
-                                              height: isPhone ? 180 : 220,
-                                              width: double.infinity,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            onPressed: isLoading
-                                                ? null
-                                                : () async {
-                                              await analyzeImage();
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                              const Color(0xFF0F172A),
-                                              padding:
-                                              const EdgeInsets.symmetric(
-                                                vertical: 18,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(16),
-                                              ),
-                                            ),
-                                            icon: isLoading
-                                                ? const SizedBox(
-                                              height: 20,
-                                              width: 20,
-                                              child:
-                                              CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                                : const Icon(
-                                              Icons.analytics,
-                                              color: Colors.white,
-                                            ),
-                                            label: Text(
-                                              isLoading
-                                                  ? 'Analyzing...'
-                                                  : 'Analyze Smile',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 24),
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: ThemeColors.card(context),
-                                            borderRadius:BorderRadius.circular(
-                                              Responsive.cardRadius(context),
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.04),
-                                                blurRadius: 18,
-                                                offset: const Offset(0, 8),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                          const SizedBox(height: 20),
+                                          Divider(color: ThemeColors.border(context)),
+                                          const SizedBox(height: 16),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-
-                                              Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.analytics,
-                                                    color: Color(0xFF2563EB),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    "AI Feature Metrics",
-                                                    style: TextStyle(
-                                                      fontSize: Responsive.headingFont(context),
-                                                      fontWeight: FontWeight.bold,
-                                                      color: ThemeColors.text(context),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-
-                                              SizedBox(
-                                                height: Responsive.sectionSpacing(context),
-                                              ),
-
-                                              Wrap(
-                                                spacing: isPhone ? 12 : 16,
-                                                runSpacing: isPhone ? 12 : 16,
-
-                                                children: [
-
-                                                  _buildMetricTile(
-                                                    "Smile Width",
-                                                    features["smile_width"],
-                                                    Colors.blue,
-                                                  ),
-
-                                                  _buildMetricTile(
-                                                    "Lip Opening",
-                                                    features["lip_opening"],
-                                                    Colors.green,
-                                                  ),
-
-                                                  _buildMetricTile(
-                                                    "Symmetry",
-                                                    features["smile_symmetry"],
-                                                    Colors.orange,
-                                                  ),
-
-                                                  _buildMetricTile(
-                                                    "Smile Arc",
-                                                    features["smile_arc"],
-                                                    Colors.purple,
-                                                  ),
-
-                                                  _buildMetricTile(
-                                                    "Midline",
-                                                    features["midline_deviation"],
-                                                    Colors.red,
-                                                  ),
-
-                                                  _buildMetricTile(
-                                                    "Buccal Corridor",
-                                                    features["buccal_corridor"],
-                                                    Colors.teal,
-                                                  ),
-
-                                                ],
+                                              Text('Classification Grade', style: AppTypography.body(context)),
+                                              AppChip(
+                                                label: grade ?? "--",
+                                                variant: AppChipVariant.info,
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        const SizedBox(height: 24),
-
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            onPressed: analysisData == null
-                                                ? null
-                                                : () {
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(child: _buildMiniCard("Severity", severity ?? "--")),
+                                              const SizedBox(width: 12),
+                                              Expanded(child: _buildMiniCard("Priority", priority ?? "--")),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 20),
+                                          PrimaryButton(
+                                            label: isPhone ? 'Clinical Report' : 'Open Complete Clinical Report',
+                                            icon: Icons.description_outlined,
+                                            variant: PrimaryButtonVariant.outlined,
+                                            onPressed: () {
                                               Navigator.pushNamed(
                                                 context,
                                                 '/reports',
@@ -646,433 +433,109 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                                 },
                                               );
                                             },
-                                            icon: const Icon(Icons.description),
-                                            label: const Text("View Clinical Report"),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF2563EB),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 18),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(16),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    if (strengths.isNotEmpty)
+                                      AppCard(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(Icons.check_circle_outline, color: ThemeColors.success(context), size: 20),
+                                                const SizedBox(width: 8),
+                                                Text('Smile Strengths', style: AppTypography.cardTitle(context)),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 12),
+                                            ...strengths.map(
+                                              (e) => Padding(
+                                                padding: const EdgeInsets.only(bottom: 8),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Icon(Icons.check, color: ThemeColors.success(context), size: 16),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(child: Text(e, style: AppTypography.body(context))),
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: useSingleColumn
-                              ? availableWidth
-                              : availableWidth * 0.38,
-                          child: analysisData == null
-                              ? const SizedBox()
-                              : Column(
-                            children: [
-                              FadeSlide(
-                                delay: const Duration(milliseconds: 250),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(
-                                    Responsive.cardPadding(context),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius: BorderRadius.circular(
-                                      Responsive.cardRadius(context),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-
-                                  child: Column(
-                                    children: [
-
-                                      const Icon(
-                                        Icons.auto_awesome,
-                                        color: Color(0xFF2563EB),
-                                        size: 42,
-                                      ),
-
-                                      const SizedBox(height: 18),
-
-                                      Text(
-                                        "AI Smile Assessment",
-                                        style: TextStyle(
-                                          fontSize: Responsive.headingFont(context),
-                                          fontWeight: FontWeight.bold,
-                                          color: ThemeColors.text(context),
+                                          ],
                                         ),
                                       ),
 
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      TweenAnimationBuilder<double>(
-                                        duration: const Duration(milliseconds: 800),
-                                        curve: Curves.easeOutBack,
-                                        tween: Tween(begin: 0.85, end: 1),
-                                        builder: (context, scale, child) {
-                                          return Transform.scale(
-                                            scale: scale,
-                                            child: child,
-                                          );
-                                        },
-                                        child: SmileScoreGauge(
-                                          score: (smileScore as num?)?.toDouble() ?? 0,
-                                          level: level ?? "",
-                                          size: isPhone ? 180 : 220,
-                                        ),
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context) * 0.75,
-                                      ),
-
-                                      Divider(
-                                        color: Colors.grey.shade300,
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context) * 0.75,
-                                      ),
-                                      Text(
-                                        "AI Clinical Summary",
-                                        style: TextStyle(
-                                          fontSize: Responsive.bodyFont(context) + 2,
-                                          fontWeight: FontWeight.w700,
-                                          color: ThemeColors.text(context),
-                                        ),
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-
-                                          Text(
-                                            "Grade",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: ThemeColors.secondaryText(context),
+                                    if (improvements.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      AppCard(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(Icons.trending_up, color: ThemeColors.warning(context), size: 20),
+                                                const SizedBox(width: 8),
+                                                Text('Areas for Improvement', style: AppTypography.cardTitle(context)),
+                                              ],
                                             ),
-                                          ),
-
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDBEAFE),
-                                              borderRadius: BorderRadius.circular(30),
-                                            ),
-                                            child: Text(
-                                              grade ?? "--",
-                                              style:  TextStyle(
-                                                color: Color(0xFF2563EB),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: Responsive.bodyFont(context) + 2,
+                                            const SizedBox(height: 12),
+                                            ...improvements.map(
+                                              (e) => Padding(
+                                                padding: const EdgeInsets.only(bottom: 8),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Icon(Icons.arrow_forward, color: ThemeColors.warning(context), size: 16),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(child: Text(e, style: AppTypography.body(context))),
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      Row(
-                                        children: [
-
-                                          Expanded(
-                                            child: _buildMiniCard(
-                                              "Severity",
-                                              severity ?? "--",
-                                            ),
-                                          ),
-
-                                          SizedBox(
-                                            width: isPhone ? 8 : 12,
-                                          ),
-
-                                          Expanded(
-                                            child: _buildMiniCard(
-                                              "Priority",
-                                              priority ?? "--",
-                                            ),
-                                          ),
-
-                                        ],
-                                      ),
-
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: Responsive.sectionSpacing(context),
-                              ),
-
-                              FadeSlide(
-                                delay: const Duration(milliseconds: 350),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius:BorderRadius.circular(
-                                      Responsive.cardRadius(context),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.04),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 8),
+                                          ],
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
 
-                                      Row(
-                                        children: const [
-                                          Icon(
-                                            Icons.verified,
-                                            color: Colors.green,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            "Smile Strengths",
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      if (strengths.isEmpty)
-                                        const Text("No strengths available.")
-                                      else
-                                        ...strengths.map(
-                                              (e) => Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                    if (recommendations.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      AppCard(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
                                               children: [
-                                                const Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.green,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    e,
-                                                    style: TextStyle(
-                                                      color: ThemeColors.text(context),
-                                                      height: 1.5,
-                                                    ),
-                                                  ),
-                                                ),
+                                                Icon(Icons.lightbulb_outline, color: ThemeColors.info(context), size: 20),
+                                                const SizedBox(width: 8),
+                                                Text('Clinical Recommendations', style: AppTypography.cardTitle(context)),
                                               ],
                                             ),
-                                          ),
-                                        ),
-
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: Responsive.sectionSpacing(context),
-                              ),
-
-                              FadeSlide(
-                                delay: const Duration(milliseconds: 450),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius:BorderRadius.circular(
-                                      Responsive.cardRadius(context),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.04),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-
-                                      Row(
-                                        children: const [
-                                          Icon(
-                                            Icons.trending_up,
-                                            color: Colors.orange,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            "Areas for Improvement",
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      if (improvements.isEmpty)
-                                        const Text("No improvements suggested.")
-                                      else
-                                        ...improvements.map(
+                                            const SizedBox(height: 12),
+                                            ...recommendations.map(
                                               (e) => Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Icon(
-                                                  Icons.arrow_circle_up,
-                                                  color: Colors.orange,
-                                                  size: 20,
+                                                padding: const EdgeInsets.only(bottom: 8),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Icon(Icons.circle, color: ThemeColors.info(context), size: 6),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(child: Text(e, style: AppTypography.body(context))),
+                                                  ],
                                                 ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    e,
-                                                    style: TextStyle(
-                                                      color: ThemeColors.text(context),
-                                                      height: 1.5,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-
+                                      ),
                                     ],
-                                  ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(
-                                height: Responsive.sectionSpacing(context),
-                              ),
-
-                              FadeSlide(
-                                delay: const Duration(milliseconds: 550),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: ThemeColors.card(context),
-                                    borderRadius:BorderRadius.circular(
-                                      Responsive.cardRadius(context),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.04),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-
-                                      Row(
-                                        children: const [
-                                          Icon(
-                                            Icons.lightbulb,
-                                            color: Colors.amber,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            "Recommendations",
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(
-                                        height: Responsive.sectionSpacing(context),
-                                      ),
-
-                                      if (recommendations.isEmpty)
-                                        const Text("No recommendations available.")
-                                      else
-                                        ...recommendations.map(
-                                              (e) => Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Icon(
-                                                  Icons.check_circle_outline,
-                                                  color: Colors.green,
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    e,
-                                                    style: TextStyle(
-                                                      color: ThemeColors.text(context),
-                                                      height: 1.5,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: Responsive.sectionSpacing(context),
-                              ),
-
-
-                            ],
-                          ),
                         ),
-
                       ],
                     );
                   },
@@ -1081,153 +544,98 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
           ),
         ),
-
-        LoadingOverlay(
-          visible: isLoading,
-        ),
+        LoadingOverlay(visible: isLoading),
       ],
     );
   }
 
-
-  Widget _buildMiniCard(String title,
-      String value,) {
+  Widget _buildMiniCard(String title, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 18,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
       decoration: BoxDecoration(
-        color: ThemeColors.inputFill(context),
-        borderRadius: BorderRadius.circular(18),
+        color: ThemeColors.surfaceVariant(context),
+        borderRadius: AppRadius.borderMd,
       ),
       child: Column(
         children: [
-
           Text(
             title,
-            style: TextStyle(
-              color: ThemeColors.secondaryText(context),
-              fontWeight: FontWeight.w600,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.caption(context),
           ),
-
-          const SizedBox(height: 8),
-
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              color: ThemeColors.text(context),
-              fontSize: Responsive.bodyFont(context) + 2,
-              fontWeight: FontWeight.bold,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.cardTitle(context),
           ),
-
         ],
       ),
     );
   }
-  Widget _buildMetricTile(
-      String title,
-      dynamic value,
-      Color color,
-      ) {
-    if (value == null) {
-      return SizedBox(
-        width: Responsive.isPhone(context) ? double.infinity : 150,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ThemeColors.secondaryText(context),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "--",
-                style: TextStyle(
-                  fontSize: Responsive.headingFont(context),
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
-    final double number = value.toDouble();
+  Widget _buildMetricTile(String title, dynamic value, Color color) {
+    final double number = (value != null) ? value.toDouble() : 0.0;
+    final formattedValue = value == null ? "--" : _formatAnimatedValue(title, number);
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isPhone = Responsive.isPhone(context);
+        final parentWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : (MediaQuery.of(context).size.width - 64);
+        final tileWidth = isPhone ? ((parentWidth - 12) / 2).clamp(120.0, 200.0) : 140.0;
 
-    return SizedBox(
-        width: Responsive.isPhone(context)
-            ? double.infinity
-            : 150,
-
-        child: TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: number),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedValue, child) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ThemeColors.secondaryText(context),
-                  fontWeight: FontWeight.w600,
+        return SizedBox(
+          width: tileWidth,
+          child: Container(
+            padding: EdgeInsets.all(isPhone ? 10 : 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: AppRadius.borderMd,
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption(context),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _formatAnimatedValue(title, animatedValue),
-                style: TextStyle(
-                  fontSize: Responsive.headingFont(context),
-                  fontWeight: FontWeight.bold,
-                  color: color,
+                const SizedBox(height: 4),
+                Text(
+                  formattedValue,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: isPhone ? 14 : 16,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
-        ),
     );
   }
+
   String _formatAnimatedValue(String title, double number) {
     switch (title) {
       case "Smile Width":
       case "Lip Opening":
       case "Buccal Corridor":
         return "${(number * 100).toStringAsFixed(1)}%";
-
       case "Symmetry":
         return "${((1 - number) * 100).toStringAsFixed(1)}%";
-
       case "Midline":
-        return "${(number * 100).toStringAsFixed(2)}%";
-
       case "Smile Arc":
         return "${(number * 100).toStringAsFixed(2)}%";
-
       default:
         return number.toStringAsFixed(2);
     }

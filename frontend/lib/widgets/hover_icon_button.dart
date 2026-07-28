@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/theme_colors.dart';
+import '../theme/app_theme.dart';
 
 class HoverIconButton extends StatefulWidget {
   final Widget child;
@@ -25,27 +27,14 @@ class _HoverIconButtonState extends State<HoverIconButton> {
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _hover ? 1.06 : 1,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: _hover
-                  ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-                  : null,
-            ),
-            child: widget.child,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.borderMd,
+            color: _hover ? ThemeColors.surfaceVariant(context) : Colors.transparent,
           ),
+          child: widget.child,
         ),
       ),
     );

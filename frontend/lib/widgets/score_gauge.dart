@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/theme_colors.dart';
 
 class SmileScoreGauge extends StatefulWidget {
   final double score;
@@ -19,24 +20,20 @@ class SmileScoreGauge extends StatefulWidget {
 
 class _SmileScoreGaugeState extends State<SmileScoreGauge>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _controller;
   late Animation<double> _animation;
 
-  Color get gaugeColor {
+  Color getGaugeColor(BuildContext context) {
     if (widget.score >= 8.5) {
-      return Colors.green;
+      return ThemeColors.success(context);
     }
-
-    if (widget.score >= 7) {
-      return Colors.blue;
+    if (widget.score >= 7.0) {
+      return ThemeColors.info(context);
     }
-
-    if (widget.score >= 5) {
-      return Colors.orange;
+    if (widget.score >= 5.0) {
+      return ThemeColors.warning(context);
     }
-
-    return Colors.red;
+    return ThemeColors.error(context);
   }
 
   @override
@@ -45,7 +42,7 @@ class _SmileScoreGaugeState extends State<SmileScoreGauge>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1200),
     );
 
     _animation = Tween<double>(
@@ -90,53 +87,52 @@ class _SmileScoreGaugeState extends State<SmileScoreGauge>
 
   @override
   Widget build(BuildContext context) {
+    final gaugeColor = getGaugeColor(context);
+
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-
         return SizedBox(
           width: widget.size,
           height: widget.size,
-
           child: CustomPaint(
-
             painter: _GaugePainter(
               progress: _animation.value / 10,
               color: gaugeColor,
+              trackColor: ThemeColors.border(context),
             ),
-
             child: Center(
-
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-
                   Text(
                     _animation.value.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: ThemeColors.text(context),
                     ),
                   ),
-
-                  const SizedBox(height: 6),
-
-                  const Text(
+                  const SizedBox(height: 2),
+                  Text(
                     "/10",
                     style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: ThemeColors.secondaryText(context),
                     ),
                   ),
-
-                  const SizedBox(height: 14),
-
+                  const SizedBox(height: 10),
                   Text(
                     widget.level,
                     style: TextStyle(
+                      fontFamily: 'Inter',
                       color: gaugeColor,
                       fontWeight: FontWeight.w600,
-                      fontSize: 18,
+                      fontSize: 15,
                     ),
                   ),
                 ],
@@ -147,34 +143,32 @@ class _SmileScoreGaugeState extends State<SmileScoreGauge>
       },
     );
   }
-
 }
+
 class _GaugePainter extends CustomPainter {
   final double progress;
   final Color color;
+  final Color trackColor;
 
   const _GaugePainter({
     required this.progress,
     required this.color,
+    required this.trackColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const strokeWidth = 16.0;
-
+    const strokeWidth = 14.0;
     final center = Offset(size.width / 2, size.height / 2);
-
-    final radius =
-        (math.min(size.width, size.height) - strokeWidth) / 2;
-
+    final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
     final rect = Rect.fromCircle(
       center: center,
       radius: radius,
     );
 
-    // Background Ring
+    // Background Track Ring
     final backgroundPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.18)
+      ..color = trackColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
@@ -185,25 +179,6 @@ class _GaugePainter extends CustomPainter {
       math.pi * 2,
       false,
       backgroundPaint,
-    );
-
-    // Glow
-    final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth + 8
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(
-        BlurStyle.normal,
-        8,
-      );
-
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      math.pi * 2 * progress,
-      false,
-      glowPaint,
     );
 
     // Progress Ring
@@ -225,6 +200,7 @@ class _GaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _GaugePainter oldDelegate) {
     return oldDelegate.progress != progress ||
-        oldDelegate.color != color;
+        oldDelegate.color != color ||
+        oldDelegate.trackColor != trackColor;
   }
 }

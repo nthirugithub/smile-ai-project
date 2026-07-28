@@ -4,9 +4,13 @@ import 'package:http/http.dart' as http;
 import '../../services/session_service.dart';
 import '../../widgets/app_shell.dart';
 import '../../theme/theme_colors.dart';
-import '../../widgets/hover_card.dart';
-import '../../widgets/primary_hover_button.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_card.dart';
+import '../../widgets/app_chip.dart';
+import '../../widgets/app_icon_container.dart';
+import '../../widgets/primary_button.dart';
 import '../../utils/responsive.dart';
+import '../../services/api_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,12 +20,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int selectedIndex = 0;
-
   int totalCases = 0;
-
   int totalReports = 0;
-
   double avgConfidence = 0;
 
   bool isLoadingStats = true;
@@ -29,128 +29,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String userEmail = '';
   List<dynamic> recentReports = [];
 
-  final List<String> menuItems = [
-    'Dashboard',
-    'Cases',
-    'Analysis',
-    'Reports',
-    'Settings',
-    'Profile',
-    'Help',
-  ];
-
-  final List<IconData> menuIcons = [
-    Icons.grid_view_rounded,
-    Icons.folder_open_outlined,
-    Icons.analytics_outlined,
-    Icons.description_outlined,
-    Icons.settings_outlined,
-    Icons.person_outline,
-    Icons.help_outline,
-  ];
-
   Future<void> fetchDashboardStats() async {
-
     try {
-
       final token = await SessionService.getAccessToken();
-
       final response = await http.get(
-        Uri.parse(
-          'http://localhost:5000/dashboard-stats',
-        ),
-        headers: {
-          "Authorization": "Bearer $token",
-        },
+        Uri.parse('${ApiService.baseUrl}/dashboard-stats'),
+        headers: {"Authorization": "Bearer $token"},
       );
-
       final data = jsonDecode(response.body);
-
       if (data['success']) {
-
         setState(() {
-
-          totalCases =
-          data['total_cases'];
-
-          totalReports =
-          data['total_reports'];
-
-          avgConfidence =
-              (data['avg_confidence'] as num)
-                  .toDouble();
-
+          totalCases = data['total_cases'];
+          totalReports = data['total_reports'];
+          avgConfidence = (data['avg_confidence'] as num).toDouble();
           isLoadingStats = false;
-
         });
       }
-
     } catch (e) {
-
       debugPrint(e.toString());
-
       setState(() {
-
         isLoadingStats = false;
-
       });
     }
   }
+
   Future<void> fetchRecentReports() async {
-
     try {
-
       final token = await SessionService.getAccessToken();
-
       final response = await http.get(
-        Uri.parse(
-          'http://localhost:5000/reports',
-        ),
-        headers: {
-          "Authorization": "Bearer $token",
-        },
+        Uri.parse('${ApiService.baseUrl}/reports'),
+        headers: {"Authorization": "Bearer $token"},
       );
-
-      final data = jsonDecode(
-        response.body,
-      );
-
+      final data = jsonDecode(response.body);
       if (data['success']) {
-
         setState(() {
-
-          recentReports =
-          data['reports'];
-
+          recentReports = data['reports'];
         });
       }
-
     } catch (e) {
-
-      debugPrint(
-        e.toString(),
-      );
+      debugPrint(e.toString());
     }
   }
 
   Future<void> loadUserData() async {
-
-    final name =
-    await SessionService.getName();
-
-    final email =
-    await SessionService.getEmail();
-
+    final name = await SessionService.getName();
+    final email = await SessionService.getEmail();
     setState(() {
       userName = name;
       userEmail = email;
     });
   }
+
   @override
   void initState() {
-
     super.initState();
-
     fetchDashboardStats();
     fetchRecentReports();
     loadUserData();
@@ -161,318 +93,205 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isPhone = Responsive.isPhone(context);
 
     return AppShell(
-        currentRoute: '/dashboard',
-        title: 'Dashboard',
-        userName: userName,
-        userEmail: userEmail,
-        enableSearch: true,
-        child:
-
-
-
-      Row(
-        children: [
-
-
-          // MAIN CONTENT
-          Expanded(
-            child: Column(
-              children: [
-
-                // PAGE CONTENT
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(
-                      Responsive.pagePadding(context),
-                    ),
-
-                    child: Column(
+      currentRoute: '/dashboard',
+      title: 'Dashboard',
+      userName: userName,
+      userEmail: userEmail,
+      enableSearch: true,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Clinical Banner Card
+            AppCard(
+              padding: EdgeInsets.all(Responsive.welcomePadding(context)),
+              color: ThemeColors.primaryContainer(context),
+              border: BorderSide(color: ThemeColors.primary(context).withValues(alpha: 0.2)),
+              child: isPhone
+                  ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-                        // WELCOME
-                        Container(
-                          padding: EdgeInsets.all(
-                            Responsive.welcomePadding(context),
+                        Text(
+                          'Welcome back, $userName',
+                          style: AppTypography.pageTitle(context).copyWith(
+                            color: ThemeColors.onPrimaryContainer(context),
                           ),
-
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-
-                              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
-                            ),
-
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withValues(alpha: 0.18),
-                                blurRadius: 35,
-                                offset: const Offset(0, 18),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Monitor patient smile reports, AI evaluations, and facial symmetry analysis in one place.',
+                          style: AppTypography.body(context).copyWith(
+                            color: ThemeColors.secondaryText(context),
                           ),
-
-                          child: isPhone
-                              ? Column(
+                        ),
+                        const SizedBox(height: 20),
+                        PrimaryButton(
+                          label: 'New Analysis',
+                          icon: Icons.add_a_photo_outlined,
+                          onPressed: () => Navigator.pushNamed(context, '/analysis'),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Welcome back, $userName 👋',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: Responsive.titleFont(context),
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                'Welcome back, $userName',
+                                style: AppTypography.pageTitle(context).copyWith(
+                                  color: ThemeColors.onPrimaryContainer(context),
                                 ),
                               ),
-
-                              const SizedBox(height: 14),
-
+                              const SizedBox(height: 8),
                               Text(
                                 'Monitor patient smile reports, AI evaluations, and facial symmetry analysis in one place.',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: Responsive.bodyFont(context),
-                                  height: 1.7,
-                                  color: Colors.white70,
-                                ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: PrimaryHoverButton(
-                                  onPressed: () {
-                                    Navigator.pushNamed(context, '/analysis');
-                                  },
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.add_a_photo_outlined),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'New Analysis',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                              : Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Welcome back, $userName 👋',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: Responsive.titleFont(context),
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    Text(
-                                      'Monitor patient smile reports, AI evaluations, and facial symmetry analysis in one place.',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: Responsive.bodyFont(context),
-                                        height: 1.7,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(width: 30),
-
-                              PrimaryHoverButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/analysis');
-                                },
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.add_a_photo_outlined),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'New Analysis',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
+                                style: AppTypography.body(context).copyWith(
+                                  color: ThemeColors.secondaryText(context),
                                 ),
                               ),
                             ],
                           ),
                         ),
-
-                        const SizedBox(height: 34),
-
-                        // STATS
-                        Wrap(
-                          spacing: 22,
-                          runSpacing: 22,
-
-                          children: [
-
-                            _buildStatCard(
-                              title: 'Total Patients',
-
-                              value: isLoadingStats
-                                  ? '...'
-                                  : totalCases.toString(),
-
-                              icon: Icons.people_outline,
-                            ),
-
-                            _buildStatCard(
-                              title: 'AI Analyses',
-
-                              value: isLoadingStats
-                                  ? '...'
-                                  : totalReports.toString(),
-
-                              icon: Icons.analytics_outlined,
-                            ),
-
-                            _buildStatCard(
-                              title: 'Model Status',
-
-                              value: isLoadingStats
-                                  ? '...'
-                                  : 'Active',
-
-                              icon: Icons.auto_awesome,
-                            ),
-                          ],
+                        const SizedBox(width: 24),
+                        PrimaryButton(
+                          label: 'New Analysis',
+                          icon: Icons.add_a_photo_outlined,
+                          fullWidth: false,
+                          onPressed: () => Navigator.pushNamed(context, '/analysis'),
                         ),
-
-                        SizedBox(
-                          height: Responsive.sectionSpacing(context),
-                        ),
-
-                        // RECENT ANALYSES
-                        Responsive.isPhone(context)
-                            ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Recent Analyses',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: Responsive.headingFont(context),
-                                fontWeight: FontWeight.w700,
-                                color: ThemeColors.text(context),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/cases',
-                                  );
-                                },
-                                child: const Text(
-                                  'View All',
-                                  style: TextStyle(
-                                    color: Color(0xFF2563EB),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                            : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Recent Analyses',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: Responsive.headingFont(context),
-                                fontWeight: FontWeight.w700,
-                                color: ThemeColors.text(context),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/cases',
-                                );
-                              },
-                              child: const Text(
-                                'View All',
-                                style: TextStyle(
-                                  color: Color(0xFF2563EB),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 22),
-
-                        ...recentReports.take(3).map((report) {
-
-                          final patientName =
-                              report['patient_name'] ?? 'Patient';
-
-                          final createdAt =
-                              report['created_at'] ?? '';
-
-                          final faceRatio =
-                          (double.tryParse(
-                            report['face_ratio'].toString(),
-                          ) ?? 0);
-
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: 18,
-                            ),
-                            child: _buildPatientCard(
-                              initials: patientName.isNotEmpty
-                                  ? patientName[0]
-                                  : 'P',
-
-                              name: patientName,
-
-                              date: createdAt,
-
-                              score:
-                              '${(faceRatio * 100).toStringAsFixed(0)}%',
-                            ),
-                          );
-                        }),
                       ],
+                    ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // STATS GRID
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildStatCard(
+                  title: 'Total Patients',
+                  value: isLoadingStats ? '...' : totalCases.toString(),
+                  icon: Icons.people_outline,
+                ),
+                _buildStatCard(
+                  title: 'AI Analyses',
+                  value: isLoadingStats ? '...' : totalReports.toString(),
+                  icon: Icons.analytics_outlined,
+                ),
+                _buildStatCard(
+                  title: 'Model Status',
+                  value: isLoadingStats ? '...' : 'Active',
+                  icon: Icons.check_circle_outline,
+                  statusVariant: AppChipVariant.success,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Recent Clinical Analyses',
+                    style: AppTypography.sectionTitle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/cases'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    isPhone ? 'View All' : 'View All Cases',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: isPhone ? 13 : 14,
+                      color: ThemeColors.primary(context),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+
+            const SizedBox(height: 16),
+
+            if (recentReports.isEmpty)
+              AppCard(
+                padding: EdgeInsets.all(isPhone ? 16 : 24),
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(isPhone ? 16 : 24),
+                    child: Text(
+                      'No recent analyses found.',
+                      style: AppTypography.body(context).copyWith(
+                        color: ThemeColors.secondaryText(context),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...recentReports.take(4).map((report) {
+                final patientName = report['patient_name'] ?? 'Patient';
+                final createdAt = report['created_at'] ?? '';
+                final faceRatio = (double.tryParse(report['face_ratio'].toString()) ?? 0);
+                final scoreText = '${(faceRatio * 100).toStringAsFixed(0)}%';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: AppCard(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isPhone ? 14 : 18,
+                      vertical: isPhone ? 10 : 14,
+                    ),
+                    child: Row(
+                      children: [
+                        AppIconContainer(
+                          icon: Icons.person_outline,
+                          size: isPhone ? AppIconSize.sm : AppIconSize.md,
+                        ),
+                        SizedBox(width: isPhone ? 10 : 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                patientName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.cardTitle(context),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                createdAt,
+                                style: AppTypography.caption(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        AppChip(
+                          label: 'Symmetry $scoreText',
+                          variant: AppChipVariant.success,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+          ],
+        ),
       ),
     );
   }
@@ -481,174 +300,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String title,
     required String value,
     required IconData icon,
+    AppChipVariant statusVariant = AppChipVariant.info,
   }) {
-    return SizedBox(
-        width: Responsive.isPhone(context)
-            ? double.infinity
-            : 280,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isPhone = Responsive.isPhone(context);
+        final isTablet = Responsive.isTablet(context);
+        double cardWidth;
+        if (isPhone) {
+          cardWidth = constraints.maxWidth;
+        } else if (isTablet) {
+          cardWidth = (constraints.maxWidth - 16) / 2;
+        } else {
+          cardWidth = (constraints.maxWidth - 32) / 3;
+        }
 
-        child: HoverCard(
-          child: Container(
-          padding: EdgeInsets.all(
-            Responsive.cardPadding(context),
-          ),
-
-      decoration: BoxDecoration(
-        color: ThemeColors.card(context),
-        borderRadius: BorderRadius.circular(
-          Responsive.cardRadius(context),
-        ),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-
-        children: [
-          Container(
-            padding: EdgeInsets.all(
-              Responsive.isPhone(context) ? 10 : 12,
-            ),
-
-            decoration: BoxDecoration(
-              color: const Color(0xFFDBEAFE),
-              borderRadius: BorderRadius.circular(
-                Responsive.isPhone(context) ? 12 : 14,
-              ),
-            ),
-
-            child: Icon(icon, color: const Color(0xFF2563EB),size: Responsive.isPhone(context) ? 24 : 28,),
-          ),
-
-
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: Responsive.statValueFont(context),
-              fontWeight: FontWeight.w700,
-              color: ThemeColors.text(context),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: Responsive.statTitleFont(context),
-              color: ThemeColors.secondaryText(context),
-            ),
-          ),
-        ],
-      ),
-          ),
-        ),
-    );
-  }
-
-  Widget _buildPatientCard({
-    required String initials,
-    required String name,
-    required String date,
-    required String score,
-  }) {
-    return HoverCard(
-        child: Container(
-          padding: EdgeInsets.all(
-            Responsive.cardPadding(context),
-          ),
-
-      decoration: BoxDecoration(
-        color: ThemeColors.card(context),
-        borderRadius: BorderRadius.circular(
-          Responsive.cardRadius(context),
-        ),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: const Color(0xFFDBEAFE),
-
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: Color(0xFF2563EB),
-                    fontWeight: FontWeight.bold,
+        return SizedBox(
+          width: cardWidth.clamp(200.0, double.infinity),
+          child: AppCard(
+            padding: EdgeInsets.all(isPhone ? 14 : 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppIconContainer(
+                      icon: icon,
+                      size: isPhone ? AppIconSize.sm : AppIconSize.md,
+                    ),
+                    if (title == 'Model Status')
+                      const AppChip(
+                        label: 'Operational',
+                        variant: AppChipVariant.success,
+                      ),
+                  ],
+                ),
+                SizedBox(height: isPhone ? 10 : 16),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: Responsive.statValueFont(context),
+                    fontWeight: FontWeight.w700,
+                    color: ThemeColors.text(context),
                   ),
                 ),
-              ),
-
-              const SizedBox(width: 18),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: Responsive.bodyFont(context) + 2,
-                      fontWeight: FontWeight.w600,
-                      color: ThemeColors.text(context),
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    date,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      color: ThemeColors.secondaryText(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-
-            decoration: BoxDecoration(
-              color: const Color(0xFFDCFCE7),
-              borderRadius: BorderRadius.circular(30),
-            ),
-
-            child: Text(
-              score,
-              style: const TextStyle(
-                color: Color(0xFF166534),
-                fontWeight: FontWeight.w600,
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: AppTypography.caption(context),
+                ),
+              ],
             ),
           ),
-        ],
-      ),),
+        );
+      },
     );
   }
 }

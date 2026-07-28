@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import '../theme/theme_colors.dart';
+import '../theme/app_theme.dart';
 
 class PrimaryHoverButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
-  final Color backgroundColor;
-  final Color foregroundColor;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
   final EdgeInsetsGeometry? padding;
 
   const PrimaryHoverButton({
     super.key,
     required this.onPressed,
     required this.child,
-    this.backgroundColor = const Color(0xFF2563EB),
-    this.foregroundColor = Colors.white,
+    this.backgroundColor,
+    this.foregroundColor,
     this.padding,
   });
 
@@ -25,45 +27,37 @@ class _PrimaryHoverButtonState extends State<PrimaryHoverButton> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = widget.backgroundColor ?? ThemeColors.primary(context);
+    final fg = widget.foregroundColor ?? Colors.white;
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => hovering = true),
       onExit: (_) => setState(() => hovering = false),
-      child: AnimatedScale(
-        scale: hovering ? 1.03 : 1.0,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: hovering
-                ? [
-              BoxShadow(
-                color: Colors.blue.withValues(alpha: 0.25),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ]
-                : [],
-          ),
-          child: ElevatedButton(
-            onPressed: widget.onPressed,
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor: widget.backgroundColor,
-              foregroundColor: widget.foregroundColor,
-              padding: widget.padding ??
-                  const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 20,
-                  ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.borderMd,
+          boxShadow: hovering
+              ? ThemeColors.primaryGlowShadow(context, bg)
+              : [],
+        ),
+        child: ElevatedButton(
+          onPressed: widget.onPressed,
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: bg,
+            foregroundColor: fg,
+            padding: widget.padding ??
+                const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+            shape: const RoundedRectangleBorder(
+              borderRadius: AppRadius.borderMd,
             ),
-            child: widget.child,
           ),
+          child: widget.child,
         ),
       ),
     );
