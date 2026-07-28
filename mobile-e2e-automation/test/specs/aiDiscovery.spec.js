@@ -24,11 +24,16 @@ describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', functi
   });
 
   after(async function () {
-    const duration = Date.now() - suiteStartTime;
-    excelReporter.setMetadata({ totalDurationMs: duration });
-    await excelReporter.generateReport();
-    rcaAnalyzer.analyzeResults(suiteResults);
-    await driverFactory.quitDriver();
+    try {
+      const duration = Date.now() - suiteStartTime;
+      excelReporter.setMetadata({ totalDurationMs: duration });
+      await excelReporter.generateReport();
+      rcaAnalyzer.analyzeResults(suiteResults);
+    } catch (err) {
+      logger.error(`Error during reporting teardown: ${err.message}`);
+    } finally {
+      await driverFactory.quitDriver();
+    }
   });
 
   it('TC_AI_001: Execute AI Screen Discovery and auto-generate Page Object', async function () {

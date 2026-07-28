@@ -18,5 +18,6 @@ module.exports = {
   slow: '10000',
   timeout: '300000', // 5 minutes per spec for E2E mobile operations
   ui: 'bdd',
+  exit: true,
   spec: ['test/specs/**/*.spec.js']
 };

@@ -125,7 +125,12 @@ class DriverFactory {
     if (this.driver) {
       logger.info(`Closing Appium session ID: ${this.driver.sessionId}`);
       try {
-        await this.driver.deleteSession();
+        let timer;
+        const deletePromise = this.driver.deleteSession();
+        const timeoutPromise = new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('deleteSession timed out after 10000ms')), 10000);
+        });
+        await Promise.race([deletePromise, timeoutPromise]).finally(() => clearTimeout(timer));
       } catch (err) {
         logger.warn(`Error terminating session: ${err.message}`);
       } finally {

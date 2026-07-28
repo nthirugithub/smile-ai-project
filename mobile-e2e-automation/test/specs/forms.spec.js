@@ -25,11 +25,16 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
   });
 
   after(async function () {
-    const duration = Date.now() - suiteStartTime;
-    excelReporter.setMetadata({ totalDurationMs: duration });
-    await excelReporter.generateReport();
-    rcaAnalyzer.analyzeResults(suiteResults);
-    await driverFactory.quitDriver();
+    try {
+      const duration = Date.now() - suiteStartTime;
+      excelReporter.setMetadata({ totalDurationMs: duration });
+      await excelReporter.generateReport();
+      rcaAnalyzer.analyzeResults(suiteResults);
+    } catch (err) {
+      logger.error(`Error during reporting teardown: ${err.message}`);
+    } finally {
+      await driverFactory.quitDriver();
+    }
   });
 
   it('TC_FORM_001: Validate required fields error triggers', async function () {
