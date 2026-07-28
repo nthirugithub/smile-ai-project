@@ -13,12 +13,12 @@ on:
         default: 'test:all'
         type: choice
         options:
-          - test:all
-          - test:auth
-          - test:forms
-          - test:components
-          - test:navigation
-          - test:ai
+          - 'test:all'
+          - 'test:auth'
+          - 'test:forms'
+          - 'test:components'
+          - 'test:navigation'
+          - 'test:ai'
 
 jobs:
   e2e-android-flutter:
