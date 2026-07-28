@@ -157,16 +157,15 @@ class _RegisterScreenState extends State<RegisterScreen>
     debugPrint('[TRACE_LOG] Step 12: Continuing _handleRegister() with success flag = ${result['success']}');
 
     if (result['success'] == true) {
-      debugPrint('[TRACE_LOG] Showing success SnackBar');
+      debugPrint('[TRACE_LOG] Step 14: Executing Navigator.pushReplacementNamed(context, "/auth") immediately');
+      Navigator.pushReplacementNamed(context, '/auth');
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registration Successful'),
           duration: Duration(seconds: 2),
         ),
       );
-
-      debugPrint('[TRACE_LOG] Step 14: Executing Navigator.pushReplacementNamed(context, "/auth")');
-      Navigator.pushReplacementNamed(context, '/auth');
       debugPrint('[TRACE_LOG] Step 14 complete: Navigator.pushReplacementNamed called');
     } else {
       debugPrint('[TRACE_LOG] Registration failed response: ${result['error']}');
