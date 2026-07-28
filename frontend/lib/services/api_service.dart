@@ -114,7 +114,7 @@ class ApiService {
   }) async {
 
     try {
-
+      debugPrint('[TRACE_LOG] Step 5: Sending HTTP POST request to $baseUrl/register');
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
         headers: {
@@ -128,6 +128,7 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 10));
 
+      debugPrint('[TRACE_LOG] Step 10: Received HTTP response code ${response.statusCode}, body: ${response.body}');
       // DEF-008: Treat any non-2xx response as failure regardless of body content
       final decoded = jsonDecode(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -139,7 +140,7 @@ class ApiService {
       };
 
     } catch (e) {
-
+      debugPrint('[TRACE_LOG] Step 10 EXCEPTION in registerUser: $e');
       return {
         'success': false,
         'error': e.toString(),

@@ -115,32 +115,49 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   Future<void> _handleRegister() async {
+    debugPrint('[TRACE_LOG] Step 1: Create Account button pressed / _handleRegister() entered');
     // DEF-004: Prevent re-entrant calls while request is in-flight
-    if (_isLoading) return;
+    if (_isLoading) {
+      debugPrint('[TRACE_LOG] _handleRegister blocked: _isLoading is true');
+      return;
+    }
 
     _clearErrors();
 
+    debugPrint('[TRACE_LOG] Step 2: Running form validation');
     if (!_validate()) {
+      debugPrint('[TRACE_LOG] Form validation failed: nameError=$_nameError, emailError=$_emailError, passwordError=$_passwordError, confirmError=$_confirmError');
       return;
     }
+    debugPrint('[TRACE_LOG] Form validation passed');
 
     setState(() {
       _isLoading = true;
     });
 
+    debugPrint('[TRACE_LOG] Step 3 & 4: Calling ApiService.registerUser() for email "${_emailController.text.trim()}"');
     final result = await ApiService.registerUser(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
-    if (!mounted) return;
+    debugPrint('[TRACE_LOG] Step 10 & 11: Received response from ApiService.registerUser(): $result');
 
+    if (!mounted) {
+      debugPrint('[TRACE_LOG] Widget unmounted after ApiService.registerUser() call');
+      return;
+    }
+
+    debugPrint('[TRACE_LOG] Step 13: Resetting _isLoading = false');
     setState(() {
       _isLoading = false;
     });
 
+    debugPrint('[TRACE_LOG] Step 12: Continuing _handleRegister() with success flag = ${result['success']}');
+
     if (result['success'] == true) {
+      debugPrint('[TRACE_LOG] Showing success SnackBar');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registration Successful'),
@@ -148,9 +165,11 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
       );
 
-      // DEF-006 complement: use pushReplacementNamed to maintain flat stack
+      debugPrint('[TRACE_LOG] Step 14: Executing Navigator.pushReplacementNamed(context, "/auth")');
       Navigator.pushReplacementNamed(context, '/auth');
+      debugPrint('[TRACE_LOG] Step 14 complete: Navigator.pushReplacementNamed called');
     } else {
+      debugPrint('[TRACE_LOG] Registration failed response: ${result['error']}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

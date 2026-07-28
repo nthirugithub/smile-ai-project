@@ -245,17 +245,21 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       registeredEmail = `qa.e2e+${Date.now()}@smileai-test.com`;
       logger.info(`[TC_AUTH_002] Registering with unique email: ${registeredEmail}`);
 
+      logger.info('[TRACE_LOG] Step 1: Triggering registerUser() on page object');
       await registerPage.registerUser(
         testData.validUser.fullName,
         registeredEmail,
         testData.validUser.password
       );
+      logger.info('[TRACE_LOG] Step 1 complete: registerPage.registerUser() returned');
 
       // After success: Flutter shows 2s SnackBar then pushReplacementNamed('/auth').
       // Allow 20s for the SnackBar to clear and the Login screen to appear.
+      logger.info('[TRACE_LOG] Step 14 verification: Calling loginPage.waitForVisible(loginButton, 20000)');
       const isLoginVisible = await loginPage.waitForVisible(
         loginPage.loginButton, 20000, 'Login Button after registration'
       );
+      logger.info(`[TRACE_LOG] Step 14 verification result: isLoginVisible = ${isLoginVisible}`);
       expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });

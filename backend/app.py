@@ -1489,11 +1489,12 @@ def mark_notifications_read():
 
 @app.route("/register", methods=["POST"])
 def register():
-
+    logger.info("[TRACE_LOG] Step 6: Backend received /register POST request")
     data = request.get_json()
     
 
     if not data:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Request body is required")
         return jsonify({
             "success": False,
             "error": "Request body is required"
@@ -1504,18 +1505,21 @@ def register():
     password = data.get("password", "")
 
     if not name:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Name is required")
         return jsonify({
             "success": False,
             "error": "Name is required"
         }), 400
 
     if len(name) < 2:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Name must be at least 2 characters")
         return jsonify({
             "success": False,
             "error": "Name must be at least 2 characters"
         }), 400
 
     if len(name) > 100:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Name is too long")
         return jsonify({
             "success": False,
             "error": "Name is too long"
@@ -1524,30 +1528,35 @@ def register():
     email_pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
 
     if not email:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Email is required")
         return jsonify({
             "success": False,
             "error": "Email is required"
         }), 400
 
     if not re.match(email_pattern, email):
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Invalid email address")
         return jsonify({
             "success": False,
             "error": "Invalid email address"
         }), 400
     
     if not password:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Password is required")
         return jsonify({
             "success": False,
             "error": "Password is required"
         }), 400
 
     if len(password) < 8:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Password must be at least 8 characters")
         return jsonify({
             "success": False,
             "error": "Password must be at least 8 characters"
         }), 400
 
     if len(password) > 128:
+        logger.info("[TRACE_LOG] Step 9: Returning 400 - Password is too long")
         return jsonify({
             "success": False,
             "error": "Password is too long"
@@ -1558,6 +1567,7 @@ def register():
     ).first()
 
     if existing_user:
+        logger.info(f"[TRACE_LOG] Step 9: Returning 400 - Email already exists: {email}")
         return jsonify({
             "success": False,
             "error": "Email already exists"
@@ -1570,6 +1580,7 @@ def register():
     )
 
     try:
+        logger.info("[TRACE_LOG] Step 7: Database transaction starts - adding user and settings")
         db.session.add(user)
         db.session.flush()      # assigns user.id without committing
 
@@ -1577,15 +1588,17 @@ def register():
         db.session.add(settings)
 
         db.session.commit()
+        logger.info(f"[TRACE_LOG] Step 8: Database transaction committed successfully for user_id={user.id}")
 
     except Exception:
         db.session.rollback()
-        logger.exception("Registration failed")
+        logger.exception("[TRACE_LOG] Step 8 EXCEPTION: Registration DB transaction failed, rolled back")
         return jsonify({
             "success": False,
             "error": "Internal server error"
         }), 500
 
+    logger.info("[TRACE_LOG] Step 9: Returning 200 - User registered successfully")
     return jsonify({
         "success": True,
         "message": "User registered successfully"

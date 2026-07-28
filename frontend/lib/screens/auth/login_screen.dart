@@ -123,6 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
   @override
   Widget build(BuildContext context) {
+    debugPrint('[TRACE_LOG] Step 15: LoginScreen built / rendered');
 
     return AuthLayout(
       hero: const AuthHero(),
