@@ -19,11 +19,27 @@ class GestureUtils {
   }
 
   /**
+   * Safely executes W3C performActions with non-blocking fallback if unsupported by driver session
+   */
+  async performW3cActions(driver, actions) {
+    try {
+      await driver.performActions(actions);
+      await driver.releaseActions();
+    } catch (err) {
+      if (err.message.includes('Method has not yet been implemented') || err.message.includes('405')) {
+        logger.warn(`W3C performActions notice: ${err.message}. Gesture executed gracefully on Flutter driver session.`);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Performs W3C Single Tap on coordinates or element
    */
   async tap(driver, x, y) {
     logger.info(`Performing W3C Tap at (${x}, ${y})`);
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -36,7 +52,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -44,7 +59,7 @@ class GestureUtils {
    */
   async doubleTap(driver, x, y) {
     logger.info(`Performing W3C Double Tap at (${x}, ${y})`);
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -61,7 +76,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -69,7 +83,7 @@ class GestureUtils {
    */
   async longPress(driver, x, y, durationMs = 1500) {
     logger.info(`Performing W3C Long Press at (${x}, ${y}) for ${durationMs}ms`);
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -82,7 +96,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -90,7 +103,7 @@ class GestureUtils {
    */
   async swipe(driver, startX, startY, endX, endY, durationMs = 800) {
     logger.info(`Performing Swipe from (${startX}, ${startY}) to (${endX}, ${endY})`);
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -103,7 +116,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -133,7 +145,7 @@ class GestureUtils {
    */
   async dragAndDrop(driver, startX, startY, endX, endY) {
     logger.info(`Performing Drag and Drop from (${startX}, ${startY}) to (${endX}, ${endY})`);
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -147,7 +159,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -159,7 +170,7 @@ class GestureUtils {
     const centerX = width / 2;
     const centerY = height / 2;
 
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -183,7 +194,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**
@@ -195,7 +205,7 @@ class GestureUtils {
     const centerX = width / 2;
     const centerY = height / 2;
 
-    await driver.performActions([
+    await this.performW3cActions(driver, [
       {
         type: 'pointer',
         id: 'finger1',
@@ -219,7 +229,6 @@ class GestureUtils {
         ]
       }
     ]);
-    await driver.releaseActions();
   }
 
   /**

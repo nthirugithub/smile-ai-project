@@ -36,6 +36,7 @@ class DriverFactory {
 
     const options = {
       ...serverOptions,
+      connectionRetryCount: 1,
       capabilities: selectedCaps
     };
 

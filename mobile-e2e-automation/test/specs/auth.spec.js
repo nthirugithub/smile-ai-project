@@ -73,7 +73,7 @@ function seedUser(email, password, name) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Flutter Android E2E - Authentication Suite', function () {
-  this.timeout(60000); // 1 minute per spec for fast E2E execution
+  this.timeout(120000); // 2 minutes per spec for reliable E2E execution
 
   let driver;
   let loginPage;

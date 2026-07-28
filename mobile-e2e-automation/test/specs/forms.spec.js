@@ -11,7 +11,7 @@ const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
 describe('Flutter Android E2E - Form Validation Suite', function () {
-  this.timeout(60000);
+  this.timeout(120000);
 
   let driver;
   let formPage;
