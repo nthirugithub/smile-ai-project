@@ -6,21 +6,21 @@ class LoginPage extends BasePage {
   constructor(driver) {
     super(driver);
 
-    // Widget Locators using Flutter Finder Strategy (ValueKey, SemanticsLabel, Text)
+    // Widget Locators with dual ValueKey and Text fallback support
     this.emailInput = this.finder.byValueKey('email_input_key');
     this.passwordInput = this.finder.byValueKey('password_input_key');
     this.loginButton = this.finder.byValueKey('login_button_key');
     this.logoutButton = this.finder.byValueKey('logout_button_key');
     
-    // Fallback text / semantics locators
+    // Text locators matching actual Flutter app screens
     this.emailInputText = this.finder.byText('Email Address');
     this.passwordInputText = this.finder.byText('Password');
-    this.loginButtonText = this.finder.byText('LOGIN');
+    this.loginButtonText = this.finder.byText('Sign In');
     
-    // Error & Validation Text Locators
-    this.emailErrorText = this.finder.byValueKey('email_error_key');
-    this.passwordErrorText = this.finder.byValueKey('password_error_key');
-    this.loginErrorSnackbar = this.finder.byValueKey('login_error_snackbar');
+    // Error & Dashboard Text Locators
+    this.emailErrorText = this.finder.byText('Please enter an email address');
+    this.passwordErrorText = this.finder.byText('Please enter a password');
+    this.loginErrorSnackbar = this.finder.byText('Invalid credentials provided. Access denied.');
     this.userDashboardHeader = this.finder.byText('Dashboard');
   }
 

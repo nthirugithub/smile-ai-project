@@ -72,6 +72,7 @@ jobs:
 
       - name: 9. Enable KVM Hardware Acceleration
         run: |
+          sudo chmod 777 /dev/kvm || true
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm-rules.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm || true
 
@@ -87,7 +88,9 @@ jobs:
           api-level: 30
           target: google_apis
           arch: x86_64
-          profile: Pixel_6
+          profile: pixel
+          force-avd-creation: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             adb devices
@@ -104,7 +107,7 @@ jobs:
           else
             echo "Creating fallback HTML report index"
             mkdir -p reports
-            echo "<html><body><h1>Flutter E2E Report</h1><p>Execution completed.</p></body></html>" > reports/index.html
+            echo "<html><body><h1>Flutter E2E Execution Report</h1><p>Execution finished.</p></body></html>" > reports/index.html
           fi
 
       - name: 13. Upload E2E Artifacts & Reports
