@@ -54,7 +54,7 @@ appium -v
 
 ### 2. Install Appium Flutter Driver & UiAutomator2 Driver
 ```bash
-appium driver install flutter
+appium driver install --source=npm appium-flutter-driver
 appium driver install uiautomator2
 ```
 Verify installed drivers:

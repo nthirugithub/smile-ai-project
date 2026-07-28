@@ -96,7 +96,7 @@ mobile-e2e-automation/
 - **Java JDK**: `17`
 - **Android SDK**: `API Level 30+` with `ANDROID_HOME` configured
 - **Appium 2.x**: Installed globally (`npm install -g appium@latest`)
-- **Flutter Appium Driver**: `appium driver install flutter`
+- **Flutter Appium Driver**: `appium driver install --source=npm appium-flutter-driver`
 
 ### 2. Installation
 ```bash
