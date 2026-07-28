@@ -99,6 +99,7 @@ class PrimaryButton extends StatelessWidget {
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
+                    value: 0.7,
                     strokeWidth: 2.2,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       _loadingColor(context),

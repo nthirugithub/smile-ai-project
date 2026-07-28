@@ -51,6 +51,7 @@ class LoginCard extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             CustomTextField(
+              key: const ValueKey('email_input_key'),
               label: 'Email Address',
               controller: emailController,
               hintText: 'name@clinic.com',
@@ -60,6 +61,7 @@ class LoginCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             CustomTextField(
+              key: const ValueKey('password_input_key'),
               label: 'Password',
               controller: passwordController,
               hintText: 'Enter your password',
@@ -78,6 +80,7 @@ class LoginCard extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             PrimaryButton(
+              key: const ValueKey('login_button_key'),
               label: 'Sign In',
               loadingLabel: 'Signing in...',
               isLoading: isLoading,

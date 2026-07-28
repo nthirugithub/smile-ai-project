@@ -31,13 +31,28 @@ class _LoginScreenState extends State<LoginScreen>
     _animationController.forward();
   }
   Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    debugPrint('[FLUTTER_E2E_LOG] _handleLogin triggered. Email: "$email"');
+
+    if (email.isEmpty || password.isEmpty) {
+      debugPrint('[FLUTTER_E2E_LOG] Empty credentials check failed.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an email address'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     final result = await ApiService.loginUser(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
+      email: email,
+      password: password,
     );
 
     if (!mounted) return;
@@ -46,8 +61,6 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     if (result['success'] == true) {
-
-
       try {
         await SessionService.saveUser(
           userId: result['user_id'] ?? 0,
@@ -55,8 +68,6 @@ class _LoginScreenState extends State<LoginScreen>
           email: result['email'] ?? '',
           accessToken: result['access_token'] ?? '',
         );
-        final token = await SessionService.getAccessToken();
-        print("SAVED TOKEN: $token");
 
         final settingsResponse = await ApiService.getSettings(
           result['user_id'],
@@ -67,9 +78,8 @@ class _LoginScreenState extends State<LoginScreen>
             settingsResponse['settings']['theme'],
           );
         }
-
       } catch (e) {
-        print('SESSION ERROR: $e');
+        debugPrint('[FLUTTER_E2E_LOG] SESSION ERROR: $e');
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,13 +92,11 @@ class _LoginScreenState extends State<LoginScreen>
         context,
         '/dashboard',
       );
-
     } else {
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['error'] ?? 'Login Failed',
+            result['error'] ?? 'Invalid credentials provided. Access denied.',
           ),
         ),
       );
