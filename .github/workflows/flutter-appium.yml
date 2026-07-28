@@ -22,7 +22,7 @@ on:
 
 jobs:
   e2e-android-flutter:
-    runs-on: macos-13 # macOS runner supporting nested hardware virtualization for Android Emulator
+   runs-on: ubuntu-latest # macOS runner supporting nested hardware virtualization for Android Emulator
 
     steps:
       - name: 1. Checkout Repository
