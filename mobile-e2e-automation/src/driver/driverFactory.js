@@ -85,16 +85,17 @@ class DriverFactory {
     }
 
     try {
-      const checkInstalled = execSync(`adb -s ${this.deviceInfo.udid} shell pm list packages ${env.appPackage}`, { encoding: 'utf8' });
+      const targetUdid = this.deviceInfo?.udid || 'emulator-5554';
+      const checkInstalled = execSync(`adb -s ${targetUdid} shell pm list packages ${env.appPackage}`, { encoding: 'utf8', timeout: 5000 });
       if (!checkInstalled.includes(env.appPackage)) {
-        logger.info(`App ${env.appPackage} is not installed on device ${this.deviceInfo.udid}. Installing APK...`);
-        execSync(`adb -s ${this.deviceInfo.udid} install -r "${env.apkPath}"`, { encoding: 'utf8' });
+        logger.info(`App ${env.appPackage} is not installed on device ${targetUdid}. Installing APK...`);
+        execSync(`adb -s ${targetUdid} install -r "${env.apkPath}"`, { encoding: 'utf8', timeout: 30000 });
         logger.info('APK installed successfully!');
       } else {
-        logger.info(`App ${env.appPackage} is already installed on device ${this.deviceInfo.udid}.`);
+        logger.info(`App ${env.appPackage} is already installed on device ${targetUdid}.`);
       }
     } catch (err) {
-      logger.warn(`ADB installation check failed: ${err.message}. Appium will attempt automatic install.`);
+      logger.warn(`ADB installation check notice: ${err.message}. Appium will attempt automatic install.`);
     }
   }
 

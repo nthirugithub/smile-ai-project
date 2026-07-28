@@ -14,34 +14,35 @@ class DeviceDetector {
       const lines = output.split('\n').filter(line => line.trim() && !line.startsWith('List of devices'));
       
       if (lines.length === 0) {
-        logger.warn('No active ADB devices detected. Falling back to default configuration.');
+        logger.warn('No active ADB devices detected from `adb devices`.');
         return {
-          udid: 'emulator-5554',
-          deviceName: 'Android Emulator',
-          platformVersion: '13.0',
+          udid: process.env.UDID || 'emulator-5554',
+          deviceName: process.env.DEVICE_NAME || 'Android Emulator',
+          platformVersion: process.env.PLATFORM_VERSION || '13.0',
           isEmulator: true
         };
       }
 
-      const firstDeviceLine = lines[0];
-      const [udid, status] = firstDeviceLine.split(/\s+/);
+      const activeDeviceLine = lines.find(l => l.includes('\tdevice')) || lines[0];
+      const [udid, status] = activeDeviceLine.split(/\s+/);
       
       if (status !== 'device') {
-        logger.warn(`Device ${udid} is in status: ${status}. Waiting or using default.`);
+        logger.warn(`Device ${udid} status is "${status}" (not ready).`);
       }
 
       let model = 'Android Device';
       let version = '13.0';
       
-      try {
-        model = execSync(`adb -s ${udid} shell getprop ro.product.model`, { encoding: 'utf8' }).trim() || model;
-        version = execSync(`adb -s ${udid} shell getprop ro.build.version.release`, { encoding: 'utf8' }).trim() || version;
-      } catch (err) {
-        logger.debug(`Could not retrieve props for device ${udid}: ${err.message}`);
+      if (status === 'device') {
+        try {
+          model = execSync(`adb -s ${udid} shell getprop ro.product.model`, { encoding: 'utf8', timeout: 3000 }).trim() || model;
+          version = execSync(`adb -s ${udid} shell getprop ro.build.version.release`, { encoding: 'utf8', timeout: 3000 }).trim() || version;
+        } catch (err) {
+          logger.warn(`Could not query props for ADB device ${udid}: ${err.message}`);
+        }
       }
 
       const isEmulator = udid.includes('emulator') || model.toLowerCase().includes('sdk') || model.toLowerCase().includes('emulator');
-
       logger.info(`Detected Android Device -> UDID: ${udid}, Model: ${model}, OS Version: ${version}, Emulator: ${isEmulator}`);
 
       return {
