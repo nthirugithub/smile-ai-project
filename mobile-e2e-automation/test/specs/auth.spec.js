@@ -155,26 +155,7 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       }
     }
 
-    // RC-4: Wait for any lingering SnackBar to fully disappear.
-    // SnackBars install a ModalBarrier that blocks tap dispatch.
-    const knownSnackbarTexts = [
-      'Please enter an email address',
-      'Invalid credentials provided. Access denied.',
-      'Registration Successful',
-      'Registration Failed',
-      'Email already exists',
-      'Login Successful',
-    ];
-    for (const text of knownSnackbarTexts) {
-      try {
-        const f = loginPage.finder.serialize(loginPage.finder.byText(text));
-        await driver.execute('flutter:waitForAbsent', f, 5000);
-      } catch (_) {
-        // Not present or already gone — fine
-      }
-    }
-
-    logger.info('--- beforeEach complete: Login screen confirmed, no active SnackBar ---');
+    logger.info('--- beforeEach complete: Login screen confirmed ---');
   });
 
   // ─── Suite Teardown ─────────────────────────────────────────────────────────

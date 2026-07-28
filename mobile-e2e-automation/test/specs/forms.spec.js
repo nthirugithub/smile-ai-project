@@ -28,14 +28,12 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
   });
 
   beforeEach(async function () {
-    // Reset state to Register screen before each form test
     try {
       await driver.execute('flutter:setFrameSync', false, 1000);
     } catch (_) {}
 
     const isRegisterVisible = await formPage.isDisplayed(formPage.submitFormButton, 'Register Button', 3000);
     if (!isRegisterVisible) {
-      // If on Login screen or elsewhere, go to Sign Up
       try {
         await loginPage.goToSignUp();
       } catch (_) {
@@ -96,9 +94,10 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
       await formPage.enterFullName('QA Test User');
       await formPage.enterEmail('test.form@example.com');
       await formPage.enterPassword('123');
+      await formPage.enterConfirmPassword('123');
       await formPage.submitForm();
 
-      const passwordErrVisible = await formPage.isDisplayed(formPage.passwordError, 'Password Length Error');
+      const passwordErrVisible = await formPage.isDisplayed(formPage.passwordLengthError, 'Password Length Error');
       expect(passwordErrVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
@@ -130,7 +129,10 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
 
       await formPage.submitForm();
 
-      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 20000, 'Login Button');
+      // Allow 1s for HTTP POST response & Navigator transition to mount /auth
+      await new Promise(r => setTimeout(r, 1000));
+
+      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 5000, 'Login Button');
       expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });

@@ -21,6 +21,7 @@ class FormPage extends BasePage {
     this.fullNameError = this.finder.byText('Full name is required');
     this.emailError = this.finder.byText('Email is required');
     this.passwordError = this.finder.byText('Password is required');
+    this.passwordLengthError = this.finder.byText('Password must be at least 8 characters');
     this.confirmPasswordError = this.finder.byText('Please confirm your password');
     this.formSuccessBanner = this.finder.byText('Registration Successful');
   }

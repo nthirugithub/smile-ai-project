@@ -21,6 +21,17 @@ class ExcelReporter {
   }
 
   /**
+   * Helper to safely get or create a worksheet without throwing 'Worksheet name already exists'
+   */
+  _getOrCreateWorksheet(name) {
+    const existing = this.workbook.getWorksheet(name);
+    if (existing) {
+      this.workbook.removeWorksheet(existing.id);
+    }
+    return this.workbook.addWorksheet(name);
+  }
+
+  /**
    * Records step log for Sheet 4
    */
   logStep(testName, step, result = 'PASSED', remarks = '') {
@@ -37,7 +48,6 @@ class ExcelReporter {
    * Records completed test result
    */
   addTestResult(testCase) {
-    // testCase: { testId, module, scenario, status, device, durationMs, failureReason, screenshotPath }
     this.testResults.push(testCase);
     if (testCase.status === 'FAILED') {
       this.failedTests.push({
@@ -75,7 +85,7 @@ class ExcelReporter {
     const passRate = total > 0 ? ((passed / total) * 100).toFixed(2) + '%' : '0%';
 
     // Sheet 1: Summary
-    const summarySheet = this.workbook.addWorksheet('Summary');
+    const summarySheet = this._getOrCreateWorksheet('Summary');
     summarySheet.columns = [
       { header: 'Metric', key: 'metric', width: 25 },
       { header: 'Value', key: 'value', width: 40 }
@@ -98,7 +108,7 @@ class ExcelReporter {
     ]);
 
     // Sheet 2: Test Cases
-    const testCasesSheet = this.workbook.addWorksheet('Test Cases');
+    const testCasesSheet = this._getOrCreateWorksheet('Test Cases');
     testCasesSheet.columns = [
       { header: 'Test ID', key: 'testId', width: 15 },
       { header: 'Module', key: 'module', width: 20 },
@@ -131,7 +141,7 @@ class ExcelReporter {
     });
 
     // Sheet 3: Failed Tests
-    const failedSheet = this.workbook.addWorksheet('Failed Tests');
+    const failedSheet = this._getOrCreateWorksheet('Failed Tests');
     failedSheet.columns = [
       { header: 'Test Name', key: 'testName', width: 35 },
       { header: 'Failure Reason', key: 'failureReason', width: 60 },
@@ -147,7 +157,7 @@ class ExcelReporter {
     });
 
     // Sheet 4: Execution Logs
-    const logsSheet = this.workbook.addWorksheet('Execution Logs');
+    const logsSheet = this._getOrCreateWorksheet('Execution Logs');
     logsSheet.columns = [
       { header: 'Timestamp', key: 'timestamp', width: 15 },
       { header: 'Test Name', key: 'testName', width: 30 },

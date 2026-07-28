@@ -72,51 +72,24 @@ class FailureHandler {
       logcatPath: null,
       widgetTreePath: null,
       currentActivity: 'Unknown',
-      currentContext: 'Unknown'
+      currentContext: 'FLUTTER'
     };
 
-    if (!driver) {
-      logger.warn('Driver instance unavailable for failure screenshot/logs capture.');
-      return diagnostics;
-    }
-
-    // 1. Capture Screenshot safely via context switch or ADB (5s timeout)
+    // 1. Capture Screenshot via ADB screencap (avoids driver context switching)
     try {
-      let captured = false;
-      try {
-        await driver.switchContext('NATIVE_APP');
-        const screenshotBase64 = await this.withTimeout(driver.takeScreenshot(), 4000, 'takeScreenshot');
-        fs.writeFileSync(screenshotPath, Buffer.from(screenshotBase64, 'base64'));
-        diagnostics.screenshotPath = screenshotPath;
-        logger.info(`📸 Native screenshot captured: ${screenshotPath}`);
-        captured = true;
-      } catch (nativeErr) {
-        logger.debug(`Native screenshot context notice: ${nativeErr.message}`);
-      } finally {
-        try {
-          await driver.switchContext('FLUTTER');
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      if (!captured) {
-        try {
-          execSync(`adb -s ${env.udid} shell screencap -p /sdcard/failure_shot.png`, { encoding: 'utf8', timeout: 4000 });
-          execSync(`adb -s ${env.udid} pull /sdcard/failure_shot.png "${screenshotPath}"`, { encoding: 'utf8', timeout: 4000 });
-          diagnostics.screenshotPath = screenshotPath;
-          logger.info(`📸 ADB screenshot captured: ${screenshotPath}`);
-        } catch (adbErr) {
-          logger.warn(`ADB screenshot capture failed: ${adbErr.message}`);
-        }
-      }
-    } catch (err) {
-      logger.error(`Failed to capture screenshot: ${err.message}`);
+      const targetUdid = env.udid || 'emulator-5554';
+      execSync(`adb -s ${targetUdid} shell screencap -p /sdcard/failure_shot.png`, { encoding: 'utf8', timeout: 5000 });
+      execSync(`adb -s ${targetUdid} pull /sdcard/failure_shot.png "${screenshotPath}"`, { encoding: 'utf8', timeout: 5000 });
+      diagnostics.screenshotPath = screenshotPath;
+      logger.info(`📸 ADB screenshot captured: ${screenshotPath}`);
+    } catch (adbErr) {
+      logger.warn(`ADB screenshot capture notice: ${adbErr.message}`);
     }
 
     // 2. Capture Device Logs (logcat via ADB - 5s timeout)
     try {
-      const logcatData = execSync(`adb -s ${env.udid} logcat -d *:E`, { encoding: 'utf8', timeout: 5000 });
+      const targetUdid = env.udid || 'emulator-5554';
+      const logcatData = execSync(`adb -s ${targetUdid} logcat -d *:E`, { encoding: 'utf8', timeout: 5000 });
       fs.writeFileSync(logcatPath, logcatData);
       diagnostics.logcatPath = logcatPath;
       logger.info(`📋 Device logcat captured: ${logcatPath}`);
@@ -125,18 +98,21 @@ class FailureHandler {
     }
 
     // 3. Capture Flutter Widget Tree Dump (5s timeout - non-blocking)
-    try {
-      const widgetTree = await this.withTimeout(driver.execute('flutter:getRenderTree'), 5000, 'flutter:getRenderTree');
-      fs.writeFileSync(widgetTreePath, typeof widgetTree === 'string' ? widgetTree : JSON.stringify(widgetTree, null, 2));
-      diagnostics.widgetTreePath = widgetTreePath;
-      logger.info(`🌳 Flutter widget tree dump captured: ${widgetTreePath}`);
-    } catch (err) {
-      logger.debug(`Flutter render tree dump skipped/timed out: ${err.message}`);
+    if (driver) {
+      try {
+        const widgetTree = await this.withTimeout(driver.execute('flutter:getRenderTree'), 5000, 'flutter:getRenderTree');
+        fs.writeFileSync(widgetTreePath, typeof widgetTree === 'string' ? widgetTree : JSON.stringify(widgetTree, null, 2));
+        diagnostics.widgetTreePath = widgetTreePath;
+        logger.info(`🌳 Flutter widget tree dump captured: ${widgetTreePath}`);
+      } catch (err) {
+        logger.debug(`Flutter render tree dump skipped/timed out: ${err.message}`);
+      }
     }
 
     // 4. Capture Current Activity (3s timeout)
     try {
-      diagnostics.currentActivity = execSync(`adb -s ${env.udid} shell "dumpsys window | grep mCurrentFocus"`, { encoding: 'utf8', timeout: 3000 }).trim();
+      const targetUdid = env.udid || 'emulator-5554';
+      diagnostics.currentActivity = execSync(`adb -s ${targetUdid} shell "dumpsys window | grep mCurrentFocus"`, { encoding: 'utf8', timeout: 3000 }).trim();
     } catch (err) {
       diagnostics.currentActivity = 'UnknownActivity';
     }
