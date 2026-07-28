@@ -74,8 +74,8 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     if (password.isEmpty) {
       passwordError = 'Password is required';
-    } else if (password.length < 6) {
-      passwordError = 'Password must be at least 6 characters';
+    } else if (password.length < 8) {
+      passwordError = 'Password must be at least 8 characters';
     }
 
     if (confirm.isEmpty) {

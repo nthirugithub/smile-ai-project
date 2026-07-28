@@ -78,14 +78,19 @@ describe('Flutter Android E2E - Authentication Suite', function () {
 
     try {
       await loginPage.goToSignUp();
+
+      // Use a timestamp-unique email to prevent 'Email already exists' 400 errors on re-runs
+      const uniqueEmail = `qa.architect+${Date.now()}@enterprise.com`;
       await registerPage.registerUser(
         testData.validUser.fullName,
-        testData.validUser.email,
+        uniqueEmail,
         testData.validUser.password
       );
       
-      // Verification: After registration, app navigates back to Login screen
-      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 10000, 'Login Button');
+      // After successful registration: Flutter shows SnackBar ('Registration Successful')
+      // then navigates to /auth via Navigator.pushReplacementNamed.
+      // Give 20 seconds for the snackbar to show+clear and navigation to settle.
+      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 20000, 'Login Button');
       expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
