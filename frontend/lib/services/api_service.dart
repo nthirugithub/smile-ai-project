@@ -126,9 +126,17 @@ class ApiService {
           'email': email,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 10));
 
-      return jsonDecode(response.body);
+      // DEF-008: Treat any non-2xx response as failure regardless of body content
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return decoded;
+      }
+      return {
+        'success': false,
+        'error': decoded['error'] ?? 'Registration failed (HTTP ${response.statusCode})',
+      };
 
     } catch (e) {
 

@@ -117,7 +117,8 @@ class LoginCard extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/register');
+                    // DEF-006: use pushReplacementNamed to keep a flat auth stack
+                    Navigator.pushReplacementNamed(context, '/register');
                   },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,

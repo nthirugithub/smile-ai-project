@@ -69,11 +69,16 @@ class _LoginScreenState extends State<LoginScreen>
           accessToken: result['access_token'] ?? '',
         );
 
+        // DEF-005: Check mounted after each await to avoid setState on disposed widget
+        if (!mounted) return;
+
         final settingsResponse = await ApiService.getSettings(
           result['user_id'],
         );
 
-        if (settingsResponse['success']) {
+        if (!mounted) return;
+
+        if (settingsResponse['success'] == true) {
           await ThemeService.instance.setTheme(
             settingsResponse['settings']['theme'],
           );
@@ -85,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Login Successful'),
+          duration: Duration(seconds: 2),
         ),
       );
 
@@ -98,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
           content: Text(
             result['error'] ?? 'Invalid credentials provided. Access denied.',
           ),
+          duration: const Duration(seconds: 3),
         ),
       );
     }

@@ -19,6 +19,8 @@ class RegisterCard extends StatelessWidget {
     required this.confirmError,
     required this.obscurePassword,
     required this.obscureConfirmPassword,
+    // DEF-004: loading state to disable button during registration request
+    this.isLoading = false,
     required this.onRegister,
     required this.onGoToLogin,
     required this.onTogglePassword,
@@ -41,6 +43,7 @@ class RegisterCard extends StatelessWidget {
 
   final bool obscurePassword;
   final bool obscureConfirmPassword;
+  final bool isLoading;
 
   final VoidCallback onRegister;
   final VoidCallback onGoToLogin;
@@ -139,7 +142,9 @@ class RegisterCard extends StatelessWidget {
             PrimaryButton(
               key: const ValueKey('register_button_key'),
               label: 'Create Account',
-              onPressed: onRegister,
+              loadingLabel: 'Creating Account...',
+              isLoading: isLoading,
+              onPressed: isLoading ? null : onRegister,
             ),
             const SizedBox(height: 20),
             Row(

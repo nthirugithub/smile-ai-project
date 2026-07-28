@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../widgets/register_card.dart';
 import '../../widgets/auth_layout.dart';
 import '../../widgets/auth_hero.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -20,6 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  // DEF-004: Loading guard prevents concurrent API calls / double-taps
+  bool _isLoading = false;
 
   String? _nameError;
   String? _emailError;
@@ -29,6 +32,18 @@ class _RegisterScreenState extends State<RegisterScreen>
   static final RegExp _emailRegex = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
   );
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
@@ -49,6 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     });
   }
 
+  // DEF-001: Password minimum raised to 8 to match backend requirement
   bool _validate() {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -75,6 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     if (password.isEmpty) {
       passwordError = 'Password is required';
     } else if (password.length < 8) {
+      // DEF-001 fix: backend requires >= 8 characters
       passwordError = 'Password must be at least 8 characters';
     }
 
@@ -96,19 +113,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         passwordError == null &&
         confirmError == null;
   }
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    );
-
-    _animationController.forward();
-  }
 
   Future<void> _handleRegister() async {
+    // DEF-004: Prevent re-entrant calls while request is in-flight
+    if (_isLoading) return;
 
     _clearErrors();
 
@@ -116,8 +124,11 @@ class _RegisterScreenState extends State<RegisterScreen>
       return;
     }
 
-    final result =
-    await ApiService.registerUser(
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await ApiService.registerUser(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -125,30 +136,27 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     if (!mounted) return;
 
-    if (result['success'] == true) {
+    setState(() {
+      _isLoading = false;
+    });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-          Text('Registration Successful'),
+          content: Text('Registration Successful'),
+          duration: Duration(seconds: 2),
         ),
       );
 
-      Navigator.pushReplacementNamed(
-        context,
-        '/auth',
-      );
-
+      // DEF-006 complement: use pushReplacementNamed to maintain flat stack
+      Navigator.pushReplacementNamed(context, '/auth');
     } else {
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['error'] ??
-                'Registration Failed',
+            result['error'] ?? 'Registration Failed',
           ),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -173,6 +181,9 @@ class _RegisterScreenState extends State<RegisterScreen>
 
       obscurePassword: _obscurePassword,
       obscureConfirmPassword: _obscureConfirmPassword,
+
+      // DEF-004: Pass loading state to disable button during request
+      isLoading: _isLoading,
 
       onRegister: _handleRegister,
       onGoToLogin: _goToLogin,
