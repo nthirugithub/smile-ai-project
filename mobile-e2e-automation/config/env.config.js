@@ -8,8 +8,8 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 module.exports = {
   // App settings
   apkPath: process.env.APK_PATH || path.join(ROOT_DIR, 'app', 'app-release.apk'),
-  appPackage: process.env.APP_PACKAGE || 'com.company.app',
-  appActivity: process.env.APP_ACTIVITY || 'com.company.app.MainActivity',
+  appPackage: process.env.APP_PACKAGE || 'com.example.smile_analysis',
+  appActivity: process.env.APP_ACTIVITY || 'com.example.smile_analysis.MainActivity',
 
   // Device & Platform Config
   platformName: process.env.PLATFORM_NAME || 'Android',
