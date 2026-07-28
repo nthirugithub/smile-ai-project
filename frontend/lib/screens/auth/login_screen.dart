@@ -39,8 +39,13 @@ class _LoginScreenState extends State<LoginScreen>
     if (email.isEmpty || password.isEmpty) {
       debugPrint('[FLUTTER_E2E_LOG] Empty credentials check failed.');
       ScaffoldMessenger.of(context).showSnackBar(
+        // RC-4: Short explicit duration so the ModalBarrier clears quickly.
+        // The beforeEach in auth.spec.js waits for this snackbar to disappear
+        // before proceeding to the next test (goToSignUp). Without this fix,
+        // the 4-second default ModalBarrier blocked the Sign Up tap.
         const SnackBar(
           content: Text('Please enter an email address'),
+          duration: Duration(seconds: 2),
         ),
       );
       return;

@@ -45,11 +45,23 @@ class DriverFactory {
       logger.info(`Appium session successfully launched! Session ID: ${this.driver.sessionId}`);
       
       if (automationType === 'Flutter') {
-        try {
-          await this.driver.execute('flutter:setFrameSync', false);
-          logger.info('Disabled Flutter Driver frame sync for reliable background interaction.');
-        } catch (syncErr) {
-          logger.warn(`setFrameSync notice: ${syncErr.message}`);
+        // Re-assert setFrameSync(false) with retries — the Flutter isolate may
+        // not be fully ready the moment the session is created. Retrying ensures
+        // the setting takes effect before the first test command is sent.
+        let frameSyncDisabled = false;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          try {
+            await this.driver.execute('flutter:setFrameSync', false, 1000);
+            logger.info(`Flutter frame sync disabled (attempt ${attempt}).`);
+            frameSyncDisabled = true;
+            break;
+          } catch (syncErr) {
+            logger.warn(`setFrameSync attempt ${attempt}/5 failed: ${syncErr.message}. Retrying in 1s...`);
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+        if (!frameSyncDisabled) {
+          logger.warn('Could not disable Flutter frame sync after 5 attempts. Continuing anyway.');
         }
       }
       return this.driver;
