@@ -159,24 +159,19 @@ class _RegisterScreenState extends State<RegisterScreen>
     if (result['success'] == true) {
       debugPrint('[TRACE_LOG] Step 14: Executing Navigator.pushReplacementNamed(context, "/auth") immediately');
       Navigator.pushReplacementNamed(context, '/auth');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration Successful'),
-          duration: Duration(seconds: 2),
-        ),
-      );
       debugPrint('[TRACE_LOG] Step 14 complete: Navigator.pushReplacementNamed called');
     } else {
       debugPrint('[TRACE_LOG] Registration failed response: ${result['error']}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result['error'] ?? 'Registration Failed',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['error'] ?? 'Registration Failed',
+            ),
+            duration: const Duration(seconds: 3),
           ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+        );
+      }
     }
   }
 

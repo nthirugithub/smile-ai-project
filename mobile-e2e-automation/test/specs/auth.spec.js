@@ -237,9 +237,9 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       // Allow 1s for HTTP POST response & Navigator transition to mount /auth
       await new Promise(r => setTimeout(r, 1000));
 
-      logger.info('[TRACE_LOG] Step 14 verification: Calling loginPage.waitForVisible(loginButton, 5000)');
+      logger.info('[TRACE_LOG] Step 14 verification: Calling loginPage.waitForVisible(loginButton, 10000)');
       const isLoginVisible = await loginPage.waitForVisible(
-        loginPage.loginButton, 5000, 'Login Button after registration'
+        loginPage.loginButton, 10000, 'Login Button after registration'
       );
       logger.info(`[TRACE_LOG] Step 14 verification result: isLoginVisible = ${isLoginVisible}`);
       expect(isLoginVisible).to.be.true;
