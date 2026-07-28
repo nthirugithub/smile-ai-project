@@ -45,7 +45,11 @@ class DriverFactory {
       logger.info(`Appium session successfully launched! Session ID: ${this.driver.sessionId}`);
       return this.driver;
     } catch (error) {
-      logger.error(`Failed to launch Appium session: ${error.message}`);
+      logger.error(`Failed to launch Appium session with ${automationType}: ${error.message}`);
+      if (automationType === 'Flutter') {
+        logger.warn('⚠️ Flutter VM Service connection timed out. Seamlessly falling back to UiAutomator2 driver session...');
+        return await this.createDriver('UiAutomator2');
+      }
       throw error;
     }
   }

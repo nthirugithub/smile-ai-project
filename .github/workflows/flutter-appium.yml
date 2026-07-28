@@ -94,6 +94,8 @@ jobs:
           disable-animations: true
           script: |
             adb devices
+            adb shell pm list packages | grep smile || true
+            adb shell dumpsys activity activities | head -n 20 || true
             npm --prefix mobile-e2e-automation run ${{ github.event.inputs.test_suite || 'test:all' }}
 
       - name: 12. Generate Mochawesome HTML Report
