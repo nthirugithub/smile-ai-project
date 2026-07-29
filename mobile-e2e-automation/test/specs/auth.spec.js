@@ -106,19 +106,19 @@ describe('Flutter Android E2E - Authentication Suite', function () {
   beforeEach(async function () {
     logger.info(`--- beforeEach: resetting to Login for: ${this.currentTest.title} ---`);
 
-    // Re-assert frame sync off before EVERY test
-    try {
-      await driver.execute('flutter:setFrameSync', false, 1000);
-    } catch (_) { /* ignore */ }
-
-    // Check if we are on the Login screen
+    // Check if we are on the Login screen with frame sync enabled
     const loginButtonFinder = loginPage.finder.serialize(loginPage.loginButton);
     let onLoginScreen = false;
     try {
+      await driver.execute('flutter:setFrameSync', true, 1000);
       await driver.execute('flutter:waitFor', loginButtonFinder, 3000);
       onLoginScreen = true;
     } catch (_) {
       onLoginScreen = false;
+    } finally {
+      try {
+        await driver.execute('flutter:setFrameSync', false, 1000);
+      } catch (_) {}
     }
 
     if (!onLoginScreen) {
@@ -128,11 +128,15 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       try {
         const signInLinkFinder = registerPage.finder.serialize(registerPage.signInLink);
         await driver.execute('flutter:clickElement', signInLinkFinder);
-        await driver.execute('flutter:setFrameSync', false, 1000);
+        await driver.execute('flutter:setFrameSync', true, 1000);
         await driver.execute('flutter:waitFor', loginButtonFinder, 3000);
         onLoginScreen = true;
       } catch (_) {
         onLoginScreen = false;
+      } finally {
+        try {
+          await driver.execute('flutter:setFrameSync', false, 1000);
+        } catch (_) {}
       }
 
       // Fallback: press back button if still not on Login screen
@@ -141,12 +145,16 @@ describe('Flutter Android E2E - Authentication Suite', function () {
         for (let i = 0; i < 3; i++) {
           try {
             await driver.back();
-            await driver.execute('flutter:setFrameSync', false, 1000);
+            await driver.execute('flutter:setFrameSync', true, 1000);
             await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
             onLoginScreen = true;
             break;
           } catch (_) {
             // keep trying
+          } finally {
+            try {
+              await driver.execute('flutter:setFrameSync', false, 1000);
+            } catch (_) {}
           }
         }
       }
@@ -163,10 +171,14 @@ describe('Flutter Android E2E - Authentication Suite', function () {
           );
           // Wait for Flutter to boot and for Login screen to appear
           await new Promise(r => setTimeout(r, 3000));
-          await driver.execute('flutter:setFrameSync', false, 1000);
+          await driver.execute('flutter:setFrameSync', true, 1000);
           await driver.execute('flutter:waitFor', loginButtonFinder, 10000);
         } catch (err) {
           logger.warn(`Activity restart attempt: ${err.message}`);
+        } finally {
+          try {
+            await driver.execute('flutter:setFrameSync', false, 1000);
+          } catch (_) {}
         }
       }
     }

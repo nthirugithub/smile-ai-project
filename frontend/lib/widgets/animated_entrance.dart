@@ -34,8 +34,15 @@ class AnimatedEntrance extends StatelessWidget {
   final bool enableSlide;
   final bool enableScale;
 
+  static const bool _disableAnimations =
+      bool.fromEnvironment('DISABLE_ANIMATIONS', defaultValue: false);
+
   @override
   Widget build(BuildContext context) {
+    if (_disableAnimations) {
+      return child;
+    }
+
     final animation = CurvedAnimation(
       parent: controller,
       curve: Interval(

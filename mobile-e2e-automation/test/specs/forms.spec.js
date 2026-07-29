@@ -28,28 +28,34 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
   });
 
   beforeEach(async function () {
-    try {
-      await driver.execute('flutter:setFrameSync', false, 1000);
-    } catch (_) {}
-
     // Reset to Login screen first to ensure a fresh, clean RegisterScreen
     const loginButtonFinder = loginPage.finder.serialize(loginPage.loginButton);
     let onLoginScreen = false;
     try {
+      await driver.execute('flutter:setFrameSync', true, 1000);
       await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
       onLoginScreen = true;
     } catch (_) {
       onLoginScreen = false;
+    } finally {
+      try {
+        await driver.execute('flutter:setFrameSync', false, 1000);
+      } catch (_) {}
     }
 
     if (!onLoginScreen) {
       try {
         const signInLinkFinder = loginPage.finder.serialize(loginPage.finder.byText('Sign In'));
         await driver.execute('flutter:clickElement', signInLinkFinder);
+        await driver.execute('flutter:setFrameSync', true, 1000);
         await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
       } catch (_) {
         try {
           await driver.back();
+        } catch (_) {}
+      } finally {
+        try {
+          await driver.execute('flutter:setFrameSync', false, 1000);
         } catch (_) {}
       }
     }

@@ -35,6 +35,10 @@ class BasePage {
 
     const serialized = this.finder.serialize(finder);
     try {
+      try {
+        await this.driver.execute('flutter:setFrameSync', true, 1000);
+      } catch (_) {}
+
       await this.driver.execute('flutter:waitFor', serialized, timeoutMs);
       return true;
     } catch (err) {
@@ -56,6 +60,10 @@ class BasePage {
 
     const serialized = this.finder.serialize(finder);
     try {
+      try {
+        await this.driver.execute('flutter:setFrameSync', true, 1000);
+      } catch (_) {}
+
       await this.driver.execute('flutter:waitForAbsent', serialized, timeoutMs);
       return true;
     } catch (err) {

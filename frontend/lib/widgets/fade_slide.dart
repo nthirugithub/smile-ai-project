@@ -65,8 +65,15 @@ class _FadeSlideState extends State<FadeSlide>
     super.dispose();
   }
 
+  static const bool _disableAnimations =
+      bool.fromEnvironment('DISABLE_ANIMATIONS', defaultValue: false);
+
   @override
   Widget build(BuildContext context) {
+    if (_disableAnimations) {
+      return widget.child;
+    }
+
     return FadeTransition(
       opacity: _opacity,
       child: SlideTransition(
