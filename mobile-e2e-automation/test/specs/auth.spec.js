@@ -122,22 +122,38 @@ describe('Flutter Android E2E - Authentication Suite', function () {
     }
 
     if (!onLoginScreen) {
-      logger.info('Not on Login screen — pressing back to recover...');
-      for (let i = 0; i < 5; i++) {
-        try {
-          await driver.back();
-          await driver.execute('flutter:setFrameSync', false, 1000);
-          await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
-          onLoginScreen = true;
-          break;
-        } catch (_) {
-          // keep trying
+      logger.info('Not on Login screen — attempting recovery to Login screen...');
+
+      // First try: if on Register screen, click "Sign In" link to pushReplacement back to /auth
+      try {
+        const signInLinkFinder = registerPage.finder.serialize(registerPage.signInLink);
+        await driver.execute('flutter:clickElement', signInLinkFinder);
+        await driver.execute('flutter:setFrameSync', false, 1000);
+        await driver.execute('flutter:waitFor', loginButtonFinder, 3000);
+        onLoginScreen = true;
+      } catch (_) {
+        onLoginScreen = false;
+      }
+
+      // Fallback: press back button if still not on Login screen
+      if (!onLoginScreen) {
+        logger.info('Sign In link recovery skipped/failed — trying back button...');
+        for (let i = 0; i < 3; i++) {
+          try {
+            await driver.back();
+            await driver.execute('flutter:setFrameSync', false, 1000);
+            await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
+            onLoginScreen = true;
+            break;
+          } catch (_) {
+            // keep trying
+          }
         }
       }
 
       // Last resort: restart the app activity via adb
       if (!onLoginScreen) {
-        logger.warn('Back navigation failed — forcing activity restart via adb');
+        logger.warn('Navigation recovery failed — forcing activity restart via adb');
         try {
           const { execSync } = require('child_process');
           const env = require('../../config/env.config');
