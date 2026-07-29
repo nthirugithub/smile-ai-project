@@ -94,6 +94,11 @@ class DriverFactory {
         elementClear: async () => ({}),
         elementSendKeys: async () => ({}),
         getElementText: async () => 'SmileSync AI',
+        getWindowSize: async () => ({ width: 1080, height: 2340 }),
+        performActions: async () => ({}),
+        releaseActions: async () => ({}),
+        takeScreenshot: async () => 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        getLogs: async () => [],
         back: async () => ({}),
         switchContext: async () => ({}),
         deleteSession: async () => ({})
