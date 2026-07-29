@@ -48,7 +48,7 @@ jobs:
       - name: 4. Run Security Posture Audit Suite (200 Test Cases)
         working-directory: ./backend
         run: |
-          python -m pytest test_security_controls.py --html=reports/security_test_report.html --self-contained-html
+          python -m pytest test_security_controls.py -v --html=reports/security_test_report.html --self-contained-html
 
       - name: 5. Upload Excel & HTML Security Audit Reports
         if: always()
