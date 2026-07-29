@@ -121,7 +121,7 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
     const startTime = Date.now();
 
     try {
-      const uniqueEmail = `form.user+${Date.now()}@example.com`;
+      const uniqueEmail = `formuser${Date.now()}@example.com`;
       await formPage.enterFullName(testData.validUser.fullName);
       await formPage.enterEmail(uniqueEmail);
       await formPage.enterPassword(testData.validUser.password);

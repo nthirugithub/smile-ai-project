@@ -221,9 +221,9 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       );
       expect(registerTitleVisible).to.be.true;
 
-      // Use a timestamp-unique email so the registration ALWAYS succeeds on
-      // every CI run, regardless of leftover DB state from previous runs.
-      registeredEmail = `qa.e2e+${Date.now()}@smileai-test.com`;
+      // Use a timestamp-unique email without '+' so keyboard sendKeys typing
+      // never drops keycodes or triggers Flutter email regex validation failure.
+      registeredEmail = `qae2e${Date.now()}@smileai-test.com`;
       logger.info(`[TC_AUTH_002] Registering with unique email: ${registeredEmail}`);
 
       logger.info('[TRACE_LOG] Step 1: Triggering registerUser() on page object');
