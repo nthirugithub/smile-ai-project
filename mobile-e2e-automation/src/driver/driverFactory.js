@@ -50,7 +50,12 @@ class DriverFactory {
     };
 
     try {
-      this.driver = await remote(options);
+      let timer;
+      const remotePromise = remote(options);
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Appium session creation timed out after 5000ms (no active emulator device)')), 5000);
+      });
+      this.driver = await Promise.race([remotePromise, timeoutPromise]).finally(() => clearTimeout(timer));
       this.currentContext = automationType;
       logger.info(`Appium session successfully launched! Session ID: ${this.driver.sessionId}`);
       
@@ -77,7 +82,7 @@ class DriverFactory {
       return this.driver;
     } catch (error) {
       logger.warn(`Notice launching Appium session with ${automationType}: ${error.message}`);
-      if (automationType === 'Flutter') {
+      if (automationType === 'Flutter' && !error.message.includes('timed out after 5000ms')) {
         logger.warn('⚠️ Falling back to UiAutomator2 driver session...');
         try {
           return await this.createDriver('UiAutomator2');
