@@ -3,8 +3,14 @@ name: load test
 on:
   push:
     branches: [ main, master, develop ]
+    paths:
+      - 'load-testing/**'
+      - '.github/workflows/k6-load-testing.yml'
   pull_request:
     branches: [ main, master ]
+    paths:
+      - 'load-testing/**'
+      - '.github/workflows/k6-load-testing.yml'
   workflow_dispatch:
     inputs:
       vus:
@@ -49,7 +55,7 @@ jobs:
           done
 
       - name: 4. Execute K6 Load Test (100 VUs / 1 min)
-        uses: grafana/k6-action@v0.0.5
+        uses: grafana/k6-action@v0.5.0
         with:
           filename: load-testing/baseline_load_test.js
           flags: --env BASE_URL=http://127.0.0.1:5000

@@ -3,8 +3,16 @@ name: Appium Test Case
 on:
   push:
     branches: [ main, master, develop ]
+    paths:
+      - 'mobile-e2e-automation/**'
+      - 'frontend/**'
+      - '.github/workflows/flutter-appium.yml'
   pull_request:
     branches: [ main, master ]
+    paths:
+      - 'mobile-e2e-automation/**'
+      - 'frontend/**'
+      - '.github/workflows/flutter-appium.yml'
   workflow_dispatch:
     inputs:
       test_suite:
