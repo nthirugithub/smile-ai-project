@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 /// Clinical Enterprise Text Field using [ThemeColors] and standard design tokens.
 class CustomTextField extends StatefulWidget {
   const CustomTextField({
-    super.key,
+    Key? key,
     this.label,
     this.controller,
     this.hintText,
@@ -29,7 +29,7 @@ class CustomTextField extends StatefulWidget {
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
     this.validator,
-  });
+  }) : super(key: null);
 
   final String? label;
   final TextEditingController? controller;
@@ -158,6 +158,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final field = TextFormField(
+      key: widget.key,
       controller: widget.controller,
       focusNode: _focusNode,
       obscureText: widget.obscureText,

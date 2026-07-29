@@ -7,7 +7,7 @@ enum PrimaryButtonVariant { filled, inverted, outlined }
 /// Primary action button using enterprise design system tokens.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
-    super.key,
+    Key? key,
     required this.label,
     required this.onPressed,
     this.icon,
@@ -16,7 +16,7 @@ class PrimaryButton extends StatelessWidget {
     this.fullWidth = true,
     this.height = 48.0,
     this.variant = PrimaryButtonVariant.filled,
-  });
+  }) : super(key: null);
 
   final String label;
   final VoidCallback? onPressed;
@@ -85,6 +85,7 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = ElevatedButton(
+      key: widget.key,
       onPressed: () {
         if (isLoading) return;
         onPressed?.call();

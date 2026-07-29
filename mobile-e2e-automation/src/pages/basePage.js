@@ -111,12 +111,22 @@ class BasePage {
 
     await this.click(finder, description, timeoutMs);
     const serialized = this.finder.serialize(finder);
+
+    // Clear existing text to prevent string concatenation across test runs
+    try {
+      await this.driver.execute('flutter:setText', serialized, '');
+    } catch (_) {
+      try {
+        await this.driver.elementClear(serialized);
+      } catch (_) {}
+    }
+
     try {
       await this.driver.elementSendKeys(serialized, text);
     } catch (err) {
-      logger.warn(`elementSendKeys notice for ${description}: ${err.message}. Retrying via flutter:enterText...`);
+      logger.warn(`elementSendKeys notice for ${description}: ${err.message}. Retrying via flutter:setText...`);
       try {
-        await this.driver.execute('flutter:enterText', text);
+        await this.driver.execute('flutter:setText', serialized, text);
       } catch (fallbackErr) {
         logger.error(`Failed to enter text into ${description}: ${fallbackErr.message}`);
         throw fallbackErr;

@@ -27,6 +27,15 @@ class DriverFactory {
     // Check APK existence and install automatically
     this.ensureApkInstalled();
 
+    // Clear app data via ADB to ensure every test suite starts with a clean storage state
+    try {
+      const targetUdid = this.deviceInfo?.udid || 'emulator-5554';
+      execSync(`adb -s ${targetUdid} shell pm clear ${env.appPackage}`, { encoding: 'utf8', timeout: 5000 });
+      logger.info(`Cleared app state for ${env.appPackage} to guarantee clean initial route.`);
+    } catch (clearErr) {
+      logger.warn(`pm clear notice: ${clearErr.message}`);
+    }
+
     const selectedCaps = automationType === 'Flutter' ? flutterCapabilities : uiAutomator2Capabilities;
     
     // Override caps with detected device info

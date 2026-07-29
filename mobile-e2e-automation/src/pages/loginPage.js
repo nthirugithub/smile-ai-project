@@ -93,8 +93,8 @@ class LoginPage extends BasePage {
   /**
    * Validates if user dashboard is displayed after successful login
    */
-  async isLoggedIn() {
-    return await this.isDisplayed(this.userDashboardHeader, 'User Dashboard');
+  async isLoggedIn(timeoutMs = 3000) {
+    return await this.isDisplayed(this.userDashboardHeader, 'User Dashboard', timeoutMs);
   }
 }
 

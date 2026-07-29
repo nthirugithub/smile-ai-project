@@ -27,6 +27,27 @@ describe('Flutter Android E2E - Navigation Suite', function () {
     loginPage = new LoginPage(driver);
   });
 
+  beforeEach(async function () {
+    try {
+      await driver.execute('flutter:setFrameSync', false, 1000);
+    } catch (_) {}
+
+    const loginButtonFinder = loginPage.finder.serialize(loginPage.loginButton);
+    let onLoginScreen = false;
+    try {
+      await driver.execute('flutter:waitFor', loginButtonFinder, 2000);
+      onLoginScreen = true;
+    } catch (_) {
+      onLoginScreen = false;
+    }
+
+    if (!onLoginScreen) {
+      try {
+        await driver.back();
+      } catch (_) {}
+    }
+  });
+
   after(async function () {
     try {
       const duration = Date.now() - suiteStartTime;
