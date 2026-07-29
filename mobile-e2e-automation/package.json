@@ -1,5 +1,5 @@
 {
-  "name": "flutter-android-appium-e2e",
+  "name": "appium-test-case",
   "version": "2.0.0",
   "description": "Enterprise-grade Flutter Android E2E Automation Framework using Appium 2.x, Node.js, Mocha, Chai, Mochawesome, ExcelJS, Winston, AI Screen Discovery & RCA",
   "main": "src/driver/driverFactory.js",

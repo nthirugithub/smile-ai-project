@@ -1,4 +1,4 @@
-name: Enterprise Flutter Android Appium E2E Automation
+name: Appium Test Case
 
 on:
   push:
@@ -21,7 +21,7 @@ on:
           - 'test:ai'
 
 jobs:
-  e2e-android-flutter:
+  appium-test-case:
     runs-on: ubuntu-latest
 
     steps:

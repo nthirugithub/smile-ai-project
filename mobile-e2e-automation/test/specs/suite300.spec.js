@@ -6,7 +6,7 @@ const excelReporter = require('../../src/utils/excelReporter');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
-describe('Enterprise Flutter Android E2E - Full 300 Test Cases Suite', function () {
+describe('Appium Test Case Suite (300 Test Cases)', function () {
   this.timeout(300000); // 5 minutes max timeout
 
   let driver;
