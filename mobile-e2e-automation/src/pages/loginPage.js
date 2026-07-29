@@ -22,7 +22,7 @@ class LoginPage extends BasePage {
     this.emailErrorText = this.finder.byText('Please enter an email address');
     this.passwordErrorText = this.finder.byText('Please enter a password');
     this.loginErrorSnackbar = this.finder.byText('Invalid credentials provided. Access denied.');
-    this.userDashboardHeader = this.finder.byText('Dashboard');
+    this.userDashboardHeader = this.finder.byValueKey('app_shell_title_text');
   }
 
   /**

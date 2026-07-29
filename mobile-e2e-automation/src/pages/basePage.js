@@ -32,9 +32,6 @@ class BasePage {
    */
   async waitForVisible(finder, timeoutMs = 3000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to be visible (${timeoutMs}ms)...`);
-    try {
-      await this.driver.execute('flutter:setFrameSync', true, 1000);
-    } catch (_) {}
 
     const serialized = this.finder.serialize(finder);
     try {
@@ -44,6 +41,7 @@ class BasePage {
       logger.warn(`Timeout waiting for ${description} after ${timeoutMs}ms: ${err.message}`);
       return false;
     } finally {
+      // Re-assert frame sync off as a safety measure after every waitFor
       try {
         await this.driver.execute('flutter:setFrameSync', false, 1000);
       } catch (_) {}
@@ -55,9 +53,6 @@ class BasePage {
    */
   async waitForAbsent(finder, timeoutMs = 3000, description = 'Flutter element') {
     logger.info(`Waiting for ${description} to disappear (${timeoutMs}ms)...`);
-    try {
-      await this.driver.execute('flutter:setFrameSync', true, 1000);
-    } catch (_) {}
 
     const serialized = this.finder.serialize(finder);
     try {
@@ -67,6 +62,7 @@ class BasePage {
       logger.warn(`Timeout waiting for ${description} to disappear: ${err.message}`);
       return false;
     } finally {
+      // Re-assert frame sync off as a safety measure after every waitForAbsent
       try {
         await this.driver.execute('flutter:setFrameSync', false, 1000);
       } catch (_) {}

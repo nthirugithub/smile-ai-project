@@ -344,6 +344,7 @@ class _AppShellState extends State<AppShell> {
                               Expanded(
                                 child: Text(
                                   widget.title,
+                                  key: const ValueKey('app_shell_title_text'),
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                   style: AppTypography.sectionTitle(context),
@@ -787,6 +788,7 @@ class _AppShellState extends State<AppShell> {
           child: Divider(height: 1),
         ),
         ListTile(
+          key: const ValueKey('logout_button_key'),
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),

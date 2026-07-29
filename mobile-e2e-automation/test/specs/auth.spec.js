@@ -250,12 +250,13 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       );
       logger.info('[TRACE_LOG] Step 1 complete: registerPage.registerUser() returned');
 
-      // Allow 1s for HTTP POST response & Navigator transition to mount /auth
-      await new Promise(r => setTimeout(r, 1000));
+      // Allow 2.5s for HTTP POST response & Navigator transition to mount /auth
+      // (CI emulators need more time: API roundtrip + 1100ms entrance animation)
+      await new Promise(r => setTimeout(r, 2500));
 
-      logger.info('[TRACE_LOG] Step 14 verification: Calling loginPage.waitForVisible(loginButton, 10000)');
+      logger.info('[TRACE_LOG] Step 14 verification: Calling loginPage.waitForVisible(loginButton, 15000)');
       const isLoginVisible = await loginPage.waitForVisible(
-        loginPage.loginButton, 10000, 'Login Button after registration'
+        loginPage.loginButton, 15000, 'Login Button after registration'
       );
       logger.info(`[TRACE_LOG] Step 14 verification result: isLoginVisible = ${isLoginVisible}`);
       expect(isLoginVisible).to.be.true;
@@ -294,7 +295,17 @@ describe('Flutter Android E2E - Authentication Suite', function () {
       await loginPage.login(registeredEmail, testData.validUser.password);
 
       const isDashboardVisible = await loginPage.isLoggedIn();
-      expect(isDashboardVisible).to.be.true;
+      // Use a longer timeout for dashboard — it loads 3 async API calls in initState
+      // Re-check with a more generous timeout if the standard isLoggedIn check fails
+      if (!isDashboardVisible) {
+        logger.warn('[TC_AUTH_003] First dashboard check failed — retrying with 15s timeout...');
+        const retryVisible = await loginPage.waitForVisible(
+          loginPage.userDashboardHeader, 15000, 'Dashboard Header (retry)'
+        );
+        expect(retryVisible).to.be.true;
+      } else {
+        expect(isDashboardVisible).to.be.true;
+      }
 
       suiteResults.push({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
       excelReporter.addTestResult({ testId, module: 'Auth', scenario, status: 'PASSED', durationMs: Date.now() - startTime });

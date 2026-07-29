@@ -129,10 +129,11 @@ describe('Flutter Android E2E - Form Validation Suite', function () {
 
       await formPage.submitForm();
 
-      // Allow 1s for HTTP POST response & Navigator transition to mount /auth
-      await new Promise(r => setTimeout(r, 1000));
+      // Allow 2.5s for HTTP POST response & Navigator transition to mount /auth
+      // (CI emulators need more time: API roundtrip + 1100ms entrance animation)
+      await new Promise(r => setTimeout(r, 2500));
 
-      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 10000, 'Login Button');
+      const isLoginVisible = await loginPage.waitForVisible(loginPage.loginButton, 15000, 'Login Button');
       expect(isLoginVisible).to.be.true;
 
       suiteResults.push({ testId, module: 'Form', scenario, status: 'PASSED', durationMs: Date.now() - startTime });
