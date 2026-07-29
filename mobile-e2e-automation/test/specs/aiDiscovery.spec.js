@@ -10,8 +10,34 @@ const failureHandler = require('../../src/utils/failureHandler');
 const rcaAnalyzer = require('../../src/utils/rcaAnalyzer');
 const logger = require('../../src/utils/logger');
 
+const http = require('http');
 const LoginPage = require('../../src/pages/loginPage');
 const testData = require('../fixtures/testData');
+
+function seedUser(email, password, name) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ email, password, name });
+    const options = {
+      hostname: '127.0.0.1',
+      port: 5000,
+      path: '/register',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => resolve());
+    });
+    req.on('error', () => resolve());
+    req.setTimeout(5000, () => { req.destroy(); resolve(); });
+    req.write(body);
+    req.end();
+  });
+}
 
 describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', function () {
   this.timeout(120000);
@@ -23,6 +49,7 @@ describe('Flutter Android E2E - Smart AI Dynamic Screen Discovery Suite', functi
   before(async function () {
     suiteStartTime = Date.now();
     logger.info('🧠 Starting Smart AI Screen Discovery & Autonomous Testing Suite...');
+    await seedUser(testData.validUser.email, testData.validUser.password, testData.validUser.fullName);
     driver = await driverFactory.createDriver('Flutter');
     const loginPage = new LoginPage(driver);
     await loginPage.login(testData.validUser.email, testData.validUser.password);
