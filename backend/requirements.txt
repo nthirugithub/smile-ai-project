@@ -47,8 +47,7 @@ threadpoolctl==3.6.0
 typing_extensions==4.15.0
 tzdata==2026.2
 Werkzeug==3.1.8
-Flask-JWT-Extended==4.7.4
-PyJWT==2.10.1
+Flask-JWT-Extended>=4.6.0
 pytest
 requests
 pytest-html
