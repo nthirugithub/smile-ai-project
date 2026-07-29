@@ -23,28 +23,33 @@ def ensure_server_running():
         return
 
     print(f"\n[conftest] Server not detected at {BASE_URL}. Starting test server thread...")
-    from app import app, db
-    from werkzeug.serving import make_server
+    server = None
+    try:
+        from app import app, db
+        from werkzeug.serving import make_server
 
-    with app.app_context():
-        db.create_all()
+        with app.app_context():
+            db.create_all()
 
-    parsed = urlparse(BASE_URL)
-    host = parsed.hostname or "127.0.0.1"
-    port = parsed.port or 5000
+        parsed = urlparse(BASE_URL)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 5000
 
-    server = make_server(host, port, app)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+        server = make_server(host, port, app)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
 
-    start_time = time.time()
-    while time.time() - start_time < 30:
-        if is_server_running(BASE_URL):
-            print(f"[conftest] Test server successfully started at {BASE_URL}")
-            break
-        time.sleep(0.5)
+        start_time = time.time()
+        while time.time() - start_time < 30:
+            if is_server_running(BASE_URL):
+                print(f"[conftest] Test server successfully started at {BASE_URL}")
+                break
+            time.sleep(0.5)
+    except Exception as e:
+        print(f"\n[conftest] Warning: Failed to start embedded test server: {e}")
 
     yield
 
-    print("\n[conftest] Shutting down test server thread...")
-    server.shutdown()
+    if server:
+        print("\n[conftest] Shutting down test server thread...")
+        server.shutdown()
