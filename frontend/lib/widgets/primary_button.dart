@@ -85,7 +85,7 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = ElevatedButton(
-      key: widget.key,
+      key: key,
       onPressed: () {
         if (isLoading) return;
         onPressed?.call();
