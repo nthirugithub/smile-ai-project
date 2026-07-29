@@ -48,6 +48,7 @@ typing_extensions==4.15.0
 tzdata==2026.2
 Werkzeug==3.1.8
 Flask-JWT-Extended>=4.6.0
+openpyxl==3.1.5
 pytest
 requests
 pytest-html
