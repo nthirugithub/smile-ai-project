@@ -1,4 +1,4 @@
-name: K6 Load Testing
+name: load test
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   k6-load-test:
-    name: K6 Backend Baseline Load Testing
+    name: load test
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
