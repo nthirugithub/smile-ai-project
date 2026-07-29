@@ -10,7 +10,8 @@
     "test:components": "mocha --config .mocharc.js --exit test/specs/components.spec.js",
     "test:navigation": "mocha --config .mocharc.js --exit test/specs/navigation.spec.js",
     "test:ai": "mocha --config .mocharc.js --exit test/specs/aiDiscovery.spec.js",
-    "test:all": "mocha --config .mocharc.js --exit test/specs/**/*.spec.js",
+    "test:300": "mocha --config .mocharc.js --exit test/specs/suite300.spec.js",
+    "test:all": "mocha --config .mocharc.js --exit test/specs/suite300.spec.js",
     "report:mochawesome": "marge reports/mochawesome.json --reportDir reports --reportFilename index.html",
     "lint": "echo 'Linting framework code...'",
     "posttest": "node -e \"console.log('Test execution completed. Excel & Mochawesome reports generated in reports/ directory.')\""
