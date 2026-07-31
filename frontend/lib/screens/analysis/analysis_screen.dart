@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../widgets/patient_information_modal.dart';
 import '../../services/api_service.dart';
 import '../../services/session_service.dart';
 import '../../theme/theme_colors.dart';
@@ -27,10 +28,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   bool isLoading = false;
   Map<String, dynamic>? analysisData;
+  Map<String, dynamic>? patientData;
   String userName = 'User';
   String userEmail = '';
 
   Future<void> pickFromCamera() async {
+    if (isLoading) return;
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.camera);
     if (image == null) return;
@@ -43,6 +46,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Future<void> pickImage() async {
+    if (isLoading) return;
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
@@ -62,6 +66,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       return;
     }
 
+    if (patientData == null || patientData!['id'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please complete patient details first")),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -72,6 +83,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         selectedImageBytes!,
         selectedImage!.name,
         userId,
+        patientId: patientData!['id'],
       );
 
       if (!mounted) return;
@@ -297,13 +309,80 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 16),
-                                      PrimaryButton(
-                                        label: 'Run AI Diagnostic Scan',
-                                        icon: Icons.analytics_outlined,
-                                        isLoading: isLoading,
-                                        loadingLabel: 'Scanning Image...',
-                                        onPressed: analyzeImage,
-                                      ),
+                                      if (patientData == null) ...[
+                                        PrimaryButton(
+                                          label: 'Complete Patient Details',
+                                          icon: Icons.person_add_outlined,
+                                          onPressed: isLoading
+                                              ? null
+                                              : () => PatientInformationModal.show(
+                                                    context,
+                                                    initialData: patientData,
+                                                    onSaved: (p) {
+                                                      setState(() {
+                                                        patientData = p;
+                                                      });
+                                                    },
+                                                  ),
+                                        ),
+                                      ] else ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: ThemeColors.success(context).withValues(alpha: 0.1),
+                                            borderRadius: AppRadius.borderMd,
+                                            border: Border.all(color: ThemeColors.success(context).withValues(alpha: 0.3)),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.check_circle_outline, color: ThemeColors.success(context), size: 20),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Patient Information Saved',
+                                                      style: AppTypography.caption(context).copyWith(
+                                                        color: ThemeColors.success(context),
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      '${patientData!['full_name']} (${patientData!['patient_code'] ?? 'P-${patientData!['id']}'})',
+                                                      style: AppTypography.body(context).copyWith(fontWeight: FontWeight.w600),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              TextButton.icon(
+                                                icon: const Icon(Icons.edit_outlined, size: 16),
+                                                label: const Text('Edit Details'),
+                                                onPressed: isLoading
+                                                    ? null
+                                                    : () => PatientInformationModal.show(
+                                                          context,
+                                                          initialData: patientData,
+                                                          onSaved: (p) {
+                                                            setState(() {
+                                                              patientData = p;
+                                                            });
+                                                          },
+                                                        ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        PrimaryButton(
+                                          label: 'Run AI Diagnostic Scan',
+                                          icon: Icons.analytics_outlined,
+                                          isLoading: isLoading,
+                                          loadingLabel: 'Scanning Image...',
+                                          onPressed: isLoading ? null : analyzeImage,
+                                        ),
+                                      ],
                                     ],
                                   ],
                                 ),

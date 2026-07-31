@@ -244,9 +244,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             else
               ...recentReports.take(4).map((report) {
                 final patientName = report['patient_name'] ?? 'Patient';
+                final patientCode = report['patient_code'] ?? (report['patient_id'] != null ? 'P-${report['patient_id'].toString().padLeft(6, '0')}' : 'P-${report['id'].toString().padLeft(6, '0')}');
                 final createdAt = report['created_at'] ?? '';
-                final faceRatio = (double.tryParse(report['face_ratio'].toString()) ?? 0);
-                final scoreText = '${(faceRatio * 100).toStringAsFixed(0)}%';
+                final severity = report['severity'] ?? 'Normal';
+
+                AppChipVariant badgeVariant = AppChipVariant.info;
+                if (severity == 'Normal') {
+                  badgeVariant = AppChipVariant.success;
+                } else if (severity == 'Mild') {
+                  badgeVariant = AppChipVariant.warning;
+                } else if (severity == 'Moderate' || severity == 'Severe') {
+                  badgeVariant = AppChipVariant.error;
+                }
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -266,11 +275,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                patientName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.cardTitle(context),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: ThemeColors.primary(context).withValues(alpha: 0.1),
+                                      borderRadius: AppRadius.borderSm,
+                                    ),
+                                    child: Text(
+                                      patientCode,
+                                      style: AppTypography.caption(context).copyWith(
+                                        color: ThemeColors.primary(context),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      patientName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.cardTitle(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -282,8 +312,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(width: 8),
                         AppChip(
-                          label: 'Symmetry $scoreText',
-                          variant: AppChipVariant.success,
+                          label: severity,
+                          variant: badgeVariant,
                         ),
                       ],
                     ),

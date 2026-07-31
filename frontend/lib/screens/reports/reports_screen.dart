@@ -476,39 +476,182 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _buildMetricsPanel() {
     final features = (analysis['features'] as Map<String, dynamic>?) ?? {};
 
+    final sym = (features['smile_symmetry'] as num?)?.toDouble() ?? 0.0;
+    final width = (features['smile_width'] as num?)?.toDouble() ?? 0.0;
+    final arc = (features['smile_arc'] as num?)?.toDouble() ?? 0.0;
+    final midline = (features['midline_deviation'] as num?)?.toDouble() ?? 0.0;
+    final lip = (features['lip_opening'] as num?)?.toDouble() ?? 0.0;
+    final ging = (features['gingival_display'] as num?)?.toDouble() ?? 0.0;
+    final buccal = (features['buccal_corridor'] as num?)?.toDouble() ?? 0.0;
+    final face = (features['face_ratio'] as num?)?.toDouble() ?? 0.0;
+
     return Column(
       children: [
-        _buildMetricCard("Smile Symmetry", '${((features['smile_symmetry'] ?? 0) * 100).toStringAsFixed(1)}%', ((features['smile_symmetry'] ?? 0) > 0.8) ? "Normal" : "Moderate", AppChipVariant.success),
+        _buildMetricCard(
+          "Smile Symmetry",
+          '${(sym * 100).toStringAsFixed(1)}%',
+          sym <= 0.020 ? "Normal" : "Asymmetric",
+          sym <= 0.020 ? AppChipVariant.success : AppChipVariant.warning,
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Smile Width", '${((features['smile_width'] ?? 0) * 100).toStringAsFixed(1)}%', "Measured", AppChipVariant.info),
+        _buildMetricCard(
+          "Smile Width",
+          '${(width * 100).toStringAsFixed(1)}%',
+          (width >= 0.42 && width <= 0.52) ? "Normal" : "Measured",
+          (width >= 0.42 && width <= 0.52) ? AppChipVariant.success : AppChipVariant.info,
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Smile Arc", '${((features['smile_arc'] ?? 0) * 100).toStringAsFixed(1)}%', ((features['smile_arc'] ?? 0) > 0.5) ? "Consonant" : "Flat", AppChipVariant.success),
+        _buildMetricCard(
+          "Smile Arc",
+          '${(arc * 100).toStringAsFixed(1)}%',
+          arc >= 0.25 ? "Consonant" : (arc >= 0.10 ? "Mildly Flat" : "Flat"),
+          arc >= 0.25 ? AppChipVariant.success : (arc >= 0.10 ? AppChipVariant.info : AppChipVariant.warning),
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Midline Deviation", '${((features['midline_deviation'] ?? 0) * 100).toStringAsFixed(1)}%', ((features['midline_deviation'] ?? 0) < 0.1) ? "Normal" : "Deviation", AppChipVariant.warning),
+        _buildMetricCard(
+          "Midline Deviation",
+          '${(midline * 100).toStringAsFixed(1)}%',
+          midline <= 0.025 ? "Normal" : (midline <= 0.040 ? "Minor Shift" : "Deviated"),
+          midline <= 0.025 ? AppChipVariant.success : (midline <= 0.040 ? AppChipVariant.info : AppChipVariant.warning),
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Lip Opening", '${((features['lip_opening'] ?? 0) * 100).toStringAsFixed(1)}%', "Measured", AppChipVariant.info),
+        _buildMetricCard(
+          "Lip Opening",
+          '${(lip * 100).toStringAsFixed(1)}%',
+          (lip >= 0.06 && lip <= 0.16) ? "Normal" : "Measured",
+          (lip >= 0.06 && lip <= 0.16) ? AppChipVariant.success : AppChipVariant.info,
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Gingival Display", '${((features['gingival_display'] ?? 0) * 100).toStringAsFixed(1)}%', ((features['gingival_display'] ?? 0) < 0.1) ? "Normal" : "Excessive", AppChipVariant.error),
+        _buildMetricCard(
+          "Gingival Display",
+          '${(ging * 100).toStringAsFixed(1)}%',
+          ging <= 0.035 ? "Normal" : (ging <= 0.055 ? "Slight" : "Excessive"),
+          ging <= 0.035 ? AppChipVariant.success : (ging <= 0.055 ? AppChipVariant.info : AppChipVariant.warning),
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Buccal Corridor", '${((features['buccal_corridor'] ?? 0) * 100).toStringAsFixed(1)}%', "Measured", AppChipVariant.info),
+        _buildMetricCard(
+          "Buccal Corridor",
+          '${(buccal * 100).toStringAsFixed(1)}%',
+          (buccal >= 0.10 && buccal <= 0.18) ? "Normal" : "Measured",
+          (buccal >= 0.10 && buccal <= 0.18) ? AppChipVariant.success : AppChipVariant.info,
+        ),
         const SizedBox(height: 12),
-        _buildMetricCard("Face Ratio", '${((features['face_ratio'] ?? 0) * 100).toStringAsFixed(1)}%', "Balanced", AppChipVariant.info),
+        _buildMetricCard(
+          "Face Ratio",
+          '${(face * 100).toStringAsFixed(1)}%',
+          (face >= 1.15 && face <= 1.45) ? "Balanced" : "Measured",
+          (face >= 1.15 && face <= 1.45) ? AppChipVariant.success : AppChipVariant.info,
+        ),
       ],
     );
   }
 
   Widget _buildAnalysisSummary() {
     final isMobile = Responsive.isPhone(context);
+    final patientName = analysis['patient_name'] ?? 'Patient';
+    final patientCode = analysis['patient_code'] ?? (analysis['patient_id'] != null ? 'P-${analysis['patient_id'].toString().padLeft(6, '0')}' : 'P-${analysis['id'] ?? "000000"}');
+    final gender = analysis['gender'] ?? '';
+    final phone = analysis['phone_number'] ?? '';
+    final qual = analysis['qualification'] ?? '';
+    final age = analysis['age'];
+
     final severity = analysis['severity']?.toString() ?? analysis['overall_severity']?.toString() ?? 'Unknown';
     final treatmentPriority = analysis['treatment_priority']?.toString() ?? analysis['priority']?.toString() ?? 'Unknown';
     final smileScore = ((analysis['smile_score'] ?? 0) as num).toStringAsFixed(1);
     final grade = analysis['grade']?.toString() ?? '-';
     final level = analysis['level']?.toString() ?? '-';
 
+    AppChipVariant getSeverityVariant(String sev) {
+      final s = sev.toLowerCase();
+      if (s.contains('normal')) return AppChipVariant.success;
+      if (s.contains('mild')) return AppChipVariant.info;
+      if (s.contains('moderate')) return AppChipVariant.warning;
+      if (s.contains('severe')) return AppChipVariant.error;
+      return AppChipVariant.neutral;
+    }
+
+    AppChipVariant getPriorityVariant(String prio) {
+      final p = prio.toLowerCase();
+      if (p.contains('low') || p.contains('routine')) return AppChipVariant.success;
+      if (p.contains('medium') || p.contains('consultation')) return AppChipVariant.info;
+      if (p.contains('high') || p.contains('urgent') || p.contains('evaluation')) return AppChipVariant.warning;
+      return AppChipVariant.neutral;
+    }
+
+    AppChipVariant getLevelVariant(String lvl) {
+      final l = lvl.toLowerCase();
+      if (l.contains('excellent') || l.contains('very good') || l.contains('good')) return AppChipVariant.success;
+      if (l.contains('fair') || l.contains('improvement')) return AppChipVariant.warning;
+      if (l.contains('poor')) return AppChipVariant.error;
+      return AppChipVariant.neutral;
+    }
+
+    final pDetails = [
+      if (gender.isNotEmpty) gender,
+      if (phone.isNotEmpty) 'Ph: $phone',
+      if (qual.isNotEmpty) qual,
+      if (age != null) 'Age: $age',
+    ].join(' • ');
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Patient Header Tag
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: ThemeColors.primary(context).withValues(alpha: 0.08),
+              borderRadius: AppRadius.borderSm,
+              border: Border.all(color: ThemeColors.primary(context).withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person, color: ThemeColors.primary(context), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: ThemeColors.primary(context),
+                              borderRadius: AppRadius.borderSm,
+                            ),
+                            child: Text(
+                              patientCode,
+                              style: AppTypography.caption(context).copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              patientName,
+                              style: AppTypography.cardTitle(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (pDetails.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          pDetails,
+                          style: AppTypography.caption(context),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               AppIconContainer(
@@ -527,15 +670,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          _summaryRow('Overall Severity', severity, AppChipVariant.warning),
+          _summaryRow('Overall Severity', severity, getSeverityVariant(severity)),
           Divider(height: 24, color: ThemeColors.border(context)),
-          _summaryRow('Treatment Priority', treatmentPriority, AppChipVariant.info),
+          _summaryRow('Treatment Priority', treatmentPriority, getPriorityVariant(treatmentPriority)),
           Divider(height: 24, color: ThemeColors.border(context)),
           _summaryRow('Smile Score', smileScore, AppChipVariant.neutral),
           Divider(height: 24, color: ThemeColors.border(context)),
           _summaryRow('Grade', grade, AppChipVariant.neutral),
           Divider(height: 24, color: ThemeColors.border(context)),
-          _summaryRow('Smile Quality', level, AppChipVariant.success),
+          _summaryRow('Smile Quality', level, getLevelVariant(level)),
+
           if ((analysis['clinical_interpretation'] ?? []).isNotEmpty) ...[
             Divider(height: 24, color: ThemeColors.border(context)),
             _summaryRow(

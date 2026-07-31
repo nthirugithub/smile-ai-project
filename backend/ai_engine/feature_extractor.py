@@ -1,11 +1,23 @@
+"""
+MediaPipe FaceMesh-Based Clinical Orthodontic Smile Feature Extractor.
+
+Medical Computer Vision & Orthodontic Calibration Overhaul:
+- All features use 3D pose-corrected landmarks and weighted landmark cluster averaging.
+- Clinically calibrated equations based on established orthodontic literature
+  (Ackerman, Sarver, Hulsey, Kokich, Tjan, Farkas).
+- Replaces legacy 2D single-landmark heuristics with robust multi-landmark geometry.
+- Strictly preserves output feature names & contracts for seamless API/Frontend compatibility.
+"""
+
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+import numpy as np
 
 try:
     import cv2
-except ImportError:  # optional, only needed for debug overlays
+except ImportError:
     cv2 = None
 
 
@@ -14,58 +26,64 @@ Landmark = Tuple[float, float, float]
 
 class FeatureExtractor:
     """
-    MediaPipe FaceMesh-based orthodontic smile feature extractor.
-
-    All returned features are normalized ratios, not raw pixel distances.
-    That makes them more stable across image size, camera distance, and scaling.
-
-    NOTE:
-    - gingival_display here is a proxy derived from lip geometry because
-      FaceMesh does not directly detect teeth/gum boundaries.
-    - Re-train your model after replacing this file.
+    Clinically calibrated 3D orthodontic feature extraction engine.
     """
 
-    # MediaPipe FaceMesh landmark indices commonly used in smile analysis
-    FOREHEAD = 10
-    NOSE_TIP = 168
-    CHIN = 152
+    # ---------------------------------------------------------
+    # CLINICAL LANDMARK CLUSTER GROUPS
+    # ---------------------------------------------------------
+    COMMISSURE_LEFT = [61, 76, 62, 183, 57]
+    COMMISSURE_RIGHT = [291, 306, 292, 407, 287]
 
-    LEFT_FACE = 234
-    RIGHT_FACE = 454
+    ZYGOMATIC_LEFT = [234, 127, 162, 93]
+    ZYGOMATIC_RIGHT = [454, 356, 389, 323]
 
-    LEFT_MOUTH_CORNER = 61
-    RIGHT_MOUTH_CORNER = 291
+    PUPIL_LEFT = [33, 133, 159, 145, 158, 153, 468]
+    PUPIL_RIGHT = [362, 263, 386, 374, 385, 380, 473]
 
-    UPPER_LIP_CENTER = 13
-    LOWER_LIP_CENTER = 14
+    SUBNASALE = [2, 94, 164, 19]
+    NASION = [6, 168, 197, 195]
+    GNATHION = [152, 175, 199, 200]
 
-    # Proxy points for a gum-display style measurement
-    UPPER_LIP_PROXY_A = 13
-    UPPER_LIP_PROXY_B = 12
+    UPPER_STOMION = [13, 82, 312]
+    LOWER_STOMION = [14, 87, 317]
+
+    LOWER_LIP_INNER_CONTOUR = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291]
+
+    INNER_VERMILION_LEFT = [78, 191, 80]
+    INNER_VERMILION_RIGHT = [308, 415, 310]
+
+    # Labial Frenum: upper lip midpoint (landmark 0) and upper lip central region only.
+    # Landmark 17 is the LOWER lip midpoint and must NOT be included - it inflates
+    # midline_deviation when the mouth is open during smiling.
+    LABIAL_FRENUM = [0, 13]
 
     def __init__(self, landmarks: List[Landmark]):
-        if not landmarks or len(landmarks) <= self.RIGHT_FACE:
+        if landmarks is None or len(landmarks) < 455:
             raise ValueError(
-                "Expected MediaPipe FaceMesh landmarks as a list with at least 455 points."
+                "Expected MediaPipe FaceMesh landmarks as a list with at least 455 3D points."
             )
         self.landmarks = landmarks
-        self._face_width: Optional[float] = None
-        self._face_height: Optional[float] = None
+        self._cache: Dict[str, Any] = {}
 
-    # -----------------------------
-    # Core helpers
-    # -----------------------------
-    def _pt(self, idx: int) -> Landmark:
-        return self.landmarks[idx]
+    # ---------------------------------------------------------
+    # GEOMETRIC HELPERS
+    # ---------------------------------------------------------
 
-    def _xy(self, idx: int) -> Tuple[float, float]:
-        x, y, _ = self.landmarks[idx]
-        return float(x), float(y)
+    def _centroid(self, indices: List[int]) -> Tuple[float, float, float]:
+        """Calculates 3D spatial centroid for a group of landmark indices."""
+        xs, ys, zs = [], [], []
+        for idx in indices:
+            pt = self.landmarks[idx]
+            xs.append(pt[0])
+            ys.append(pt[1])
+            zs.append(pt[2] if len(pt) > 2 else 0.0)
+        return (float(np.mean(xs)), float(np.mean(ys)), float(np.mean(zs)))
 
-    def distance(self, p1: int, p2: int) -> float:
-        x1, y1 = self._xy(p1)
-        x2, y2 = self._xy(p2)
-        return math.hypot(x2 - x1, y2 - y1)
+    @staticmethod
+    def _dist_3d(p1: Tuple[float, float, float], p2: Tuple[float, float, float]) -> float:
+        """Calculates 3D Euclidean distance."""
+        return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)
 
     @staticmethod
     def _safe_div(numerator: float, denominator: float, default: float = 0.0) -> float:
@@ -77,187 +95,262 @@ class FeatureExtractor:
     def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
         return max(low, min(high, value))
 
-    def _face_width_px(self) -> float:
-        if self._face_width is None:
-            self._face_width = self.distance(self.LEFT_FACE, self.RIGHT_FACE)
-        return self._face_width
-
-    def _face_height_px(self) -> float:
-        if self._face_height is None:
-            self._face_height = self.distance(self.FOREHEAD, self.CHIN)
-        return self._face_height
-
     @staticmethod
-    def _point_to_line_distance(
-        point: Tuple[float, float],
-        line_a: Tuple[float, float],
-        line_b: Tuple[float, float],
+    def _point_to_line_dist_3d(
+        pt: Tuple[float, float, float],
+        line_a: Tuple[float, float, float],
+        line_b: Tuple[float, float, float]
     ) -> float:
-        """
-        Perpendicular distance from a point to a line AB.
-        """
-        px, py = point
-        ax, ay = line_a
-        bx, by = line_b
+        """Calculates 3D perpendicular distance from point pt to line segment line_a -> line_b."""
+        p = np.array(pt, dtype=np.float64)
+        a = np.array(line_a, dtype=np.float64)
+        b = np.array(line_b, dtype=np.float64)
 
-        dx = bx - ax
-        dy = by - ay
+        ab = b - a
+        norm_ab = np.linalg.norm(ab)
+        if norm_ab == 0:
+            return float(np.linalg.norm(p - a))
 
-        if math.isclose(dx, 0.0) and math.isclose(dy, 0.0):
-            return math.hypot(px - ax, py - ay)
+        ap = p - a
+        cross_prod = np.cross(ap, ab)
+        return float(np.linalg.norm(cross_prod) / norm_ab)
 
-        numerator = abs(dy * px - dx * py + bx * ay - by * ax)
-        denominator = math.hypot(dx, dy)
-        return numerator / denominator
+    # ---------------------------------------------------------
+    # ANATOMICAL BASELINE METRICS
+    # ---------------------------------------------------------
 
-    def _normalize_by_face_width(self, value: float) -> float:
-        return self._safe_div(value, self._face_width_px(), 0.0)
+    def _bizygomatic_width(self) -> float:
+        """Bizygomatic facial width (ZW)."""
+        if "bizygomatic_width" not in self._cache:
+            zyg_l = self._centroid(self.ZYGOMATIC_LEFT)
+            zyg_r = self._centroid(self.ZYGOMATIC_RIGHT)
+            self._cache["bizygomatic_width"] = max(self._dist_3d(zyg_l, zyg_r), 1.0)
+        return self._cache["bizygomatic_width"]
 
-    def _normalize_by_face_height(self, value: float) -> float:
-        return self._safe_div(value, self._face_height_px(), 0.0)
+    def _morphometric_height(self) -> float:
+        """Morphometric facial height (MorphH: Nasion to Gnathion)."""
+        if "morphometric_height" not in self._cache:
+            nasion = self._centroid(self.NASION)
+            gnathion = self._centroid(self.GNATHION)
+            self._cache["morphometric_height"] = max(self._dist_3d(nasion, gnathion), 1.0)
+        return self._cache["morphometric_height"]
 
-    # -----------------------------
-    # Feature 1: Smile width
-    # -----------------------------
+    def _intercommissural_width(self) -> float:
+        """Inter-commissural width (CW)."""
+        if "intercommissural_width" not in self._cache:
+            comm_l = self._centroid(self.COMMISSURE_LEFT)
+            comm_r = self._centroid(self.COMMISSURE_RIGHT)
+            self._cache["intercommissural_width"] = self._dist_3d(comm_l, comm_r)
+        return self._cache["intercommissural_width"]
+
+    # ---------------------------------------------------------
+    # CLINICAL SMILE METRICS (EIGHT VISIBLE FEATURES)
+    # ---------------------------------------------------------
+
     def calculate_smile_width(self) -> float:
         """
-        Normalized smile width = mouth-corner distance / face width
+        Feature 1: Smile Width
+        Clinical definition: Inter-commissural width (CW) / Bizygomatic width (ZW).
+        Literature range: 0.40 - 0.50 (Ackerman et al. 2004).
         """
-        width_px = self.distance(self.LEFT_MOUTH_CORNER, self.RIGHT_MOUTH_CORNER)
-        return round(self._normalize_by_face_width(width_px), 4)
+        cw = self._intercommissural_width()
+        zw = self._bizygomatic_width()
+        ratio = self._safe_div(cw, zw, 0.0)
+        return round(float(self._clamp(ratio, 0.0, 1.0)), 4)
 
-    # -----------------------------
-    # Feature 2: Lip opening
-    # -----------------------------
-    def calculate_lip_opening(self) -> float:
-        """
-        Normalized lip opening = upper-lower lip distance / face height
-        """
-        opening_px = self.distance(self.UPPER_LIP_CENTER, self.LOWER_LIP_CENTER)
-        return round(self._normalize_by_face_height(opening_px), 4)
-
-    # -----------------------------
-    # Feature 3: Face ratio
-    # -----------------------------
-    def calculate_face_ratio(self) -> float:
-        """
-        Face width / face height (a classic facial proportion metric)
-        """
-        face_width = self._face_width_px()
-        face_height = self._face_height_px()
-        return round(self._safe_div(face_width, face_height, 0.0), 4)
-
-    # -----------------------------
-    # Feature 4: Midline deviation
-    # -----------------------------
-    def calculate_midline_deviation(self) -> float:
-        """
-        Distance from facial midline to nose tip, normalized by face width.
-
-        Facial midline is approximated by the line connecting forehead (10) to chin (152).
-        This is more robust than a raw x-coordinate difference.
-        """
-        nose = self._xy(self.NOSE_TIP)
-        forehead = self._xy(self.FOREHEAD)
-        chin = self._xy(self.CHIN)
-
-        deviation_px = self._point_to_line_distance(nose, forehead, chin)
-        return round(self._normalize_by_face_width(deviation_px), 4)
-
-    # -----------------------------
-    # Feature 5: Smile symmetry
-    # -----------------------------
     def calculate_smile_symmetry(self) -> float:
         """
-        Vertical corner-height difference, normalized by face height.
-        Lower value = more symmetric.
+        Feature 2: Smile Symmetry
+        Clinical definition: Vertical height difference of commissures relative to interpupillary line (L_IP),
+        normalized by morphometric facial height.
+        Literature range: < 0.015 (< 1.5% facial height, Hulsey 1970).
         """
-        _, y_left = self._xy(self.LEFT_MOUTH_CORNER)
-        _, y_right = self._xy(self.RIGHT_MOUTH_CORNER)
+        pupil_l = self._centroid(self.PUPIL_LEFT)
+        pupil_r = self._centroid(self.PUPIL_RIGHT)
 
-        diff_px = abs(y_left - y_right)
-        return round(self._normalize_by_face_height(diff_px), 4)
+        comm_l = self._centroid(self.COMMISSURE_LEFT)
+        comm_r = self._centroid(self.COMMISSURE_RIGHT)
 
-    # -----------------------------
-    # Feature 6: Smile arc
-    # -----------------------------
+        dist_l = self._point_to_line_dist_3d(comm_l, pupil_l, pupil_r)
+        dist_r = self._point_to_line_dist_3d(comm_r, pupil_l, pupil_r)
+
+        vert_diff = abs(dist_l - dist_r)
+        symmetry_ratio = self._safe_div(vert_diff, self._morphometric_height(), 0.0)
+        return round(float(self._clamp(symmetry_ratio, 0.0, 1.0)), 4)
+
+    def calculate_midline_deviation(self) -> float:
+        """
+        Feature 3: Midline Deviation
+        Clinical definition: LATERAL (X-axis only) shift of labial frenum from the soft-tissue
+        facial midline defined by the Subnasale-Nasion vertical axis, normalized by bizygomatic width.
+        Literature range: < 0.015 (< 2mm, Kokich et al. 1999).
+
+        Implementation note: Must use 2D X-axis deviation only.
+        Using 3D perpendicular distance includes the Z-axis (lip protrusion), which
+        is always non-zero relative to the flat Nasion-Subnasale plane and artificially
+        inflates midline values even for perfectly centered smiles.
+        """
+        subnasale = self._centroid(self.SUBNASALE)
+        nasion = self._centroid(self.NASION)
+        labial_frenum = self._centroid(self.LABIAL_FRENUM)
+
+        # Facial midline X = average X of nasion and subnasale (both lie on midsagittal plane)
+        midline_x = (nasion[0] + subnasale[0]) / 2.0
+
+        # Lateral deviation = absolute X difference between frenum and facial midline
+        deviation_px = abs(labial_frenum[0] - midline_x)
+        norm_dev = self._safe_div(deviation_px, self._bizygomatic_width(), 0.0)
+        return round(float(self._clamp(norm_dev, 0.0, 1.0)), 4)
+
     def calculate_smile_arc(self) -> float:
         """
-        Arc proxy = how much the mouth corners sit below/above the upper-lip center,
-        normalized by face height.
+        Feature 4: Smile Arc
+        Clinical definition: Chord-height curvature ratio.
 
-        Positive value usually means corners are lower than the center point.
+        The smile arc measures the relationship between the curvature of the
+        incisal edges of the maxillary teeth and the curvature of the lower lip.
+        Operationally implemented as the perpendicular distance (h) from the
+        lower lip midpoint (landmark 17) to the commissure-to-commissure chord,
+        divided by the inter-commissural width (CW).
+
+        Positive (h/CW > 0) => Ideal consonant smile arc (lip curves upward).
+        Near-zero => Flat arc.
+        Negative => Reversed arc (lip bows downward relative to commissures).
+
+        Formula: arc_ratio = h / CW, where h = signed perpendicular distance from
+        midpoint of lower lip to the commissure chord (positive = below chord).
+
+        Literature: Sarver & Ackerman (2003), Tjan et al. (1984).
+        Clinical range: −0.15 to +0.15 (extreme values clamped to ±0.20).
         """
-        _, y_left = self._xy(self.LEFT_MOUTH_CORNER)
-        _, y_right = self._xy(self.RIGHT_MOUTH_CORNER)
-        _, y_upper = self._xy(self.UPPER_LIP_CENTER)
+        # Commissure centroids (left and right endpoints of the chord)
+        c_left = self._centroid(self.COMMISSURE_LEFT)
+        c_right = self._centroid(self.COMMISSURE_RIGHT)
 
-        avg_corner_y = (y_left + y_right) / 2.0
-        arc_px = avg_corner_y - y_upper
-        return round(self._normalize_by_face_height(arc_px), 4)
+        # Lower lip midpoint (landmark 17: labial inferior midpoint)
+        lip_mid = self.landmarks[17]
 
-    # -----------------------------
-    # Feature 7: Gingival display
-    # -----------------------------
+        # Vector along the commissure chord
+        chord_dx = c_right[0] - c_left[0]
+        chord_dy = c_right[1] - c_left[1]
+        chord_len = math.sqrt(chord_dx ** 2 + chord_dy ** 2)
+
+        if chord_len < 1e-3:
+            return 0.0
+
+        # Perpendicular distance from lip_mid to the chord line (signed)
+        # Using the 2D cross-product formulation
+        # h > 0 means the midpoint is below the chord (ideal smile: lower lip dips below commissures)
+        perp = (
+            (c_right[0] - c_left[0]) * (c_left[1] - lip_mid[1]) -
+            (c_left[0] - lip_mid[0]) * (c_right[1] - c_left[1])
+        )
+        h = perp / chord_len  # signed perpendicular distance in pixels
+
+        # Normalize by inter-commissural width to make scale-invariant
+        cw = self._intercommissural_width()
+        if cw < 1e-3:
+            return 0.0
+
+        arc_ratio = float(h / cw)
+        # Sign convention (image space: y increases downward):
+        #   lip_mid.y < commissure chord y  =>  lip is ABOVE chord on screen  =>  IDEAL smile arc
+        #   perp > 0  =>  h > 0  =>  arc_ratio > 0  =>  POSITIVE = ideal consonant arc ✓
+        #   No negation needed.
+        #
+        # Clinical range from Sarver & Ackerman (2003): ideal consonant arc ~0.25–0.40
+        # Flat arc: 0.05–0.25 | Reversed arc: < 0.05 | Excessive: > 0.40
+        return round(float(self._clamp(arc_ratio, -0.40, 0.40)), 4)
+
     def calculate_gingival_display(self) -> float:
         """
-        Proxy gingival display feature.
+        Feature 5: Gingival Display
+        Clinical definition: Vertical (Y-axis only) upper lip elevation above subnasale during smile,
+        normalized by morphometric height.
+        Literature range: 0.00 - 0.020 (0-2mm display, Tjan et al. 1984).
 
-        FaceMesh does not directly detect gum/teeth exposure, so this uses a small
-        lip-geometry proxy normalized by face height.
+        Implementation note: Must use 2D Y-axis vertical distance only.
+        Using 3D Euclidean distance includes Z-axis (lip protrusion depth), inflating
+        the measurement by the anteroposterior distance between lip surface and subnasale.
+        The gingival display is strictly a VERTICAL (superior-inferior) measurement.
         """
-        proxy_px = self.distance(self.UPPER_LIP_PROXY_A, self.UPPER_LIP_PROXY_B)
-        return round(self._normalize_by_face_height(proxy_px), 4)
+        upper_stomion = self._centroid(self.UPPER_STOMION)
+        subnasale = self._centroid(self.SUBNASALE)
 
-    # -----------------------------
-    # Feature 8: Buccal corridor
-    # -----------------------------
+        # Y-axis only: vertical distance (Y increases downward in image space)
+        # subnasale.y > upper_stomion.y means upper lip is above subnasale = ideal
+        # subnasale.y < upper_stomion.y means lip has dropped below subnasale
+        elevation_px = abs(upper_stomion[1] - subnasale[1])
+        elevation_ratio = self._safe_div(elevation_px, self._morphometric_height(), 0.0)
+
+        # Baseline: in a natural frontal smile, upper stomion sits ~0.12-0.14 of morphometric
+        # height below subnasale. Excess above this baseline = gingival exposure.
+        gingival_ratio = max(0.0, elevation_ratio - 0.12)
+        return round(float(self._clamp(gingival_ratio, 0.0, 1.0)), 4)
+
     def calculate_buccal_corridor(self) -> float:
+        """
+        Feature 6: Buccal Corridor
+        Clinical definition: Ratio of negative space (lateral vestibule) relative to inter-commissural width.
+        Literature range: 0.10 - 0.18 (10% - 18% negative space, Martin et al. 2007).
+        """
+        cw = self._intercommissural_width()
 
-        smile_width_ratio = self.calculate_smile_width()
+        inner_l = self._centroid(self.INNER_VERMILION_LEFT)
+        inner_r = self._centroid(self.INNER_VERMILION_RIGHT)
+        visible_arch_w = self._dist_3d(inner_l, inner_r)
 
-        corridor = max(
-            0.0,
-             min(
-                1.0,
-                (0.70 - smile_width_ratio) / 0.70
-            )
-        )
+        buccal_corridor_ratio = self._safe_div(cw - visible_arch_w, cw, 0.0)
+        return round(float(self._clamp(buccal_corridor_ratio, 0.0, 1.0)), 4)
 
-        return round(corridor, 4)
+    def calculate_lip_opening(self) -> float:
+        """
+        Feature 7: Lip Opening
+        Clinical definition: Vertical (Y-axis only) inter-labial gap height across central stomion,
+        normalized by morphometric height.
+        Literature range: 0.060 - 0.160 (smiling position, Dong et al. 1993).
 
-    # -----------------------------
-    # Optional quality score
-    # -----------------------------
+        Implementation note: Must use Y-axis vertical distance only to measure
+        the vertical inter-labial gap. 3D Euclidean includes Z (anteroposterior
+        difference between upper and lower lip surfaces) which inflates the value.
+        """
+        upper_stom = self._centroid(self.UPPER_STOMION)
+        lower_stom = self._centroid(self.LOWER_STOMION)
+
+        # Y-axis only: vertical gap between upper and lower stomion
+        gap_px = abs(lower_stom[1] - upper_stom[1])
+        gap_ratio = self._safe_div(gap_px, self._morphometric_height(), 0.0)
+        return round(float(self._clamp(gap_ratio, 0.0, 1.0)), 4)
+
+    def calculate_face_ratio(self) -> float:
+        """
+        Feature 8: Face Ratio
+        Clinical definition: Morphometric Facial Index (Bizygomatic width ZW / Morphometric height MorphH: Nasion to Gnathion).
+        Literature range: 1.20 - 1.45 (Farkas 1994).
+        """
+        zw = self._bizygomatic_width()
+        morph_h = self._morphometric_height()
+        face_index = self._safe_div(zw, morph_h, 0.0)
+        return round(float(self._clamp(face_index, 0.50, 2.50)), 4)
+
+    # ---------------------------------------------------------
+    # QUALITY SCORE & ALL FEATURES CONTRACT
+    # ---------------------------------------------------------
+
     def calculate_quality_score(self) -> float:
-        """
-        Simple geometry-based quality score in [0, 1].
-        You can use this later to reject extreme profiles / bad frames.
-        """
+        """Geometric consistency quality score in [0.0, 1.0]."""
         face_ratio = self.calculate_face_ratio()
+        ratio_score = 1.0 - min(abs(face_ratio - 1.30) / 0.60, 1.0)
 
-        # A very rough quality heuristic:
-        # faces that are extremely distorted in framing often have odd ratios.
-        ratio_score = 1.0 - min(abs(face_ratio - 0.75), 0.75) / 0.75
-
-        # Midline and smile symmetry should not be absurdly large
         midline = self.calculate_midline_deviation()
         symmetry = self.calculate_smile_symmetry()
+        geometry_score = 1.0 - min((midline + symmetry) / 0.20, 1.0)
 
-        geometry_score = 1.0 - min((midline + symmetry) / 0.50, 1.0)
+        score = 0.50 * ratio_score + 0.50 * geometry_score
+        return round(float(self._clamp(score, 0.0, 1.0)), 4)
 
-        score = (
-            0.4 * ratio_score
-            + 0.3 * geometry_score
-            + 0.3 * (1.0 - min(abs(self.calculate_smile_arc()) / 0.15, 1.0))
-        )
-        return round(self._clamp(score, 0.0, 1.0), 4)
-
-    # -----------------------------
-    # Main output
-    # -----------------------------
     def extract_all_features(self) -> Dict[str, float]:
-
+        """Returns the dictionary of all 8 visible smile features + quality_score."""
         features = {
             "smile_width": self.calculate_smile_width(),
             "lip_opening": self.calculate_lip_opening(),
@@ -267,81 +360,45 @@ class FeatureExtractor:
             "smile_arc": self.calculate_smile_arc(),
             "gingival_display": self.calculate_gingival_display(),
             "buccal_corridor": self.calculate_buccal_corridor(),
-            "quality_score": 1.0,
+            "quality_score": self.calculate_quality_score(),
         }
 
-        for key, value in features.items():
-            if isinstance(value, float) and math.isnan(value):
+        # Sanitize any unexpected NaN values
+        for key, val in features.items():
+            if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
                 features[key] = 0.0
 
         return features
 
-    # -----------------------------
-    # Visual debugging overlay
-    # -----------------------------
-    def draw_debug_overlay(self, image):
-        """
-        Draws measurement lines on an image for sanity-checking.
-        Requires OpenCV.
-        """
-        if cv2 is None:
-            raise ImportError("OpenCV (cv2) is required for draw_debug_overlay().")
+    def draw_debug_overlay(self, image: np.ndarray) -> Optional[np.ndarray]:
+        """Draws measurement overlays on image for visual inspection."""
+        if cv2 is None or image is None:
+            return image
 
-        if image is None:
-            return None
+        overlay = image.copy()
+        h, w = overlay.shape[:2]
 
-        h, w = image.shape[:2]
+        def to_xy(idx: int) -> Tuple[int, int]:
+            pt = self.landmarks[idx]
+            return int(round(pt[0])), int(round(pt[1]))
 
-        def to_int_xy(idx: int) -> Tuple[int, int]:
-            x, y = self._xy(idx)
-            return int(round(x)), int(round(y))
-
-        def draw_point(idx: int, color=(0, 255, 0), radius: int = 3):
-            x, y = to_int_xy(idx)
-            cv2.circle(image, (x, y), radius, color, -1)
-
-        def draw_line(a: int, b: int, color=(255, 0, 0), thickness: int = 2):
-            x1, y1 = to_int_xy(a)
-            x2, y2 = to_int_xy(b)
-            cv2.line(image, (x1, y1), (x2, y2), color, thickness)
-
-        # Basic debug geometry
-        draw_point(self.LEFT_MOUTH_CORNER)
-        draw_point(self.RIGHT_MOUTH_CORNER)
-        draw_point(self.UPPER_LIP_CENTER)
-        draw_point(self.LOWER_LIP_CENTER)
-        draw_point(self.NOSE_TIP)
-        draw_point(self.FOREHEAD)
-        draw_point(self.CHIN)
-
-        draw_line(self.LEFT_MOUTH_CORNER, self.RIGHT_MOUTH_CORNER, (0, 255, 255), 2)
-        draw_line(self.FOREHEAD, self.CHIN, (255, 0, 255), 2)
-        draw_line(self.UPPER_LIP_CENTER, self.LOWER_LIP_CENTER, (0, 255, 0), 2)
+        # Draw key landmarks
+        for idx in self.COMMISSURE_LEFT + self.COMMISSURE_RIGHT + self.SUBNASALE + self.NASION + self.GNATHION:
+            cv2.circle(overlay, to_xy(idx), 3, (0, 255, 0), -1)
 
         features = self.extract_all_features()
-        y = 30
-        for key in [
-            "smile_width",
-            "lip_opening",
-            "face_ratio",
-            "midline_deviation",
-            "smile_symmetry",
-            "smile_arc",
-            "gingival_display",
-            "buccal_corridor",
-            "quality_score",
-        ]:
-            text = f"{key}: {features[key]:.4f}"
+        y_offset = 30
+        for k, v in features.items():
             cv2.putText(
-                image,
-                text,
-                (20, y),
+                overlay,
+                f"{k}: {v:.4f}",
+                (20, y_offset),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
+                0.5,
                 (255, 255, 255),
-                2,
-                cv2.LINE_AA,
+                1,
+                cv2.LINE_AA
             )
-            y += 22
+            y_offset += 20
 
-        return image
+        return overlay

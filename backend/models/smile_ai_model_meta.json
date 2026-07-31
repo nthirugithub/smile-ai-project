@@ -1,10 +1,9 @@
 {
-  "training_date": "2026-07-16 13:15:51",
-  "model_name": "RandomForest",
-  "cv_accuracy": 0.5708994708994709,
-  "test_accuracy": 0.5909090909090909,
-  "balanced_accuracy": 0.5296296296296296,
-  "weighted_f1": 0.586907114624506,
+  "training_date": "2026-07-29 23:16:39",
+  "random_seed": 42,
+  "model_name": "ExtraTrees",
+  "model_version": "3.1",
+  "feature_source": "regenerated_v2",
   "feature_columns": [
     "smile_width",
     "lip_opening",
@@ -20,6 +19,18 @@
     "1": "Mild",
     "2": "Moderate"
   },
-  "average_confidence": 0.6130374795025516,
-  "dataset_size": 110
+  "n_original_training_samples": 80,
+  "n_training_samples_after_smote": 110,
+  "n_test_samples": 21,
+  "smote_applied": true,
+  "class_balancing_method": "SMOTE (Chawla et al. 2002) + class_weight=balanced",
+  "cv_metric": "balanced_accuracy (Repeated Stratified 5-Fold x3)",
+  "test_accuracy": 0.4762,
+  "test_balanced_accuracy": 0.4278,
+  "test_f1_weighted": 0.4524,
+  "test_roc_auc_macro": 0.6499,
+  "test_brier_score_mean": 0.1891,
+  "average_test_confidence": 0.5609,
+  "calibration_method": "Platt Scaling (sigmoid, 5-fold CV)",
+  "clinical_notes": "Model is a clinical decision-support component. Predictions must be reviewed by qualified orthodontic clinicians."
 }

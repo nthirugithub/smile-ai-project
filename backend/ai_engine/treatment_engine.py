@@ -118,173 +118,98 @@ class TreatmentEngine:
             })
 
         # ---------------------------------------------
+        # Feature-Specific Clinical Decision Support Suggestions
+        # ---------------------------------------------
+
         # Midline Analysis
-        # ---------------------------------------------
-
-        if midline_assessment.get("issue", False):
-
+        if midline_assessment.get("issue", False) and midline_assessment.get("severity") in ["Mild Concern", "Moderate Concern", "Significant Concern"]:
             recommendations.append(
-                "Clinical evaluation of dental midline alignment is recommended to determine whether orthodontic correction could improve smile symmetry and facial balance."
+                "Clinical evaluation of dental midline alignment is suggested to determine whether orthodontic correction could improve facial symmetry."
             )
-
             add_interpretation(
                 "Midline Alignment",
-                (
-                    "The dental midline deviates beyond the preferred reference range, "
-                    "which may influence overall smile symmetry and facial harmony.\n\n"
-                    f"Measured value: {midline_assessment.get('value')}\n"
-                    f"Preferred threshold: {midline_assessment.get('threshold')}"
-                ),
-                "warning",
+                f"Dental midline shift identified ({midline_assessment.get('value'):.3f} vs reference {midline_assessment.get('threshold')}). Clinical evaluation advised.",
+                "warning"
             )
-
         else:
-
             add_interpretation(
                 "Midline Alignment",
-                (
-                    "The dental midline is within the preferred reference range and "
-                    "demonstrates good alignment with the facial midline, supporting "
-                    "balanced smile aesthetics."
-                ),
-                "good",
+                "The dental midline is within preferred reference alignment, supporting balanced facial symmetry.",
+                "good"
             )
-        # ---------------------------------------------
+
         # Smile Symmetry
-        # ---------------------------------------------
-
-        if symmetry_assessment.get("issue", False):
-
+        if symmetry_assessment.get("issue", False) and symmetry_assessment.get("severity") in ["Mild Concern", "Moderate Concern", "Significant Concern"]:
             recommendations.append(
-                "Clinical evaluation of smile symmetry is recommended to determine whether orthodontic or restorative treatment could improve overall facial balance."
+                "Clinical evaluation of smile symmetry is suggested to assess bilateral commissure height alignment."
             )
-
             add_interpretation(
                 "Smile Symmetry",
-                (
-                    "Noticeable smile asymmetry was identified, which may affect overall "
-                    "smile balance and facial harmony.\n\n"
-                    f"Measured value: {symmetry_assessment.get('value')}\n"
-                    f"Preferred threshold: {symmetry_assessment.get('threshold')}"
-                ),
-                "warning",
+                f"Smile asymmetry identified ({symmetry_assessment.get('value'):.3f} vs reference {symmetry_assessment.get('threshold')}). Clinical review advised.",
+                "warning"
             )
-
         else:
-
             add_interpretation(
                 "Smile Symmetry",
-                (
-                    "Smile symmetry is within the preferred reference range, with balanced "
-                    "left and right smile proportions contributing to natural facial harmony."
-                ),
-                "good",
+                "Smile symmetry is within preferred reference limits with balanced commissure height alignment.",
+                "good"
             )
-                
-        # ---------------------------------------------
+
         # Gingival Display
-        # ---------------------------------------------
-
-        if gingival_assessment.get("issue", False):
-
+        if gingival_assessment.get("issue", False) and gingival_assessment.get("severity") in ["Mild Concern", "Moderate Concern", "Significant Concern"]:
             recommendations.append(
-                "Clinical evaluation by an orthodontist or periodontist is recommended to determine the underlying cause of the increased gingival display and the most appropriate management approach."
+                "Clinical evaluation of gingival display is suggested to determine whether lip elevation or gingival proportions warrant aesthetic management."
             )
-
             add_interpretation(
                 "Gingival Display",
-                (
-                    "Increased gingival display was observed during smiling, which may "
-                    "influence overall smile aesthetics.\n\n"
-                    f"Measured value: {gingival_assessment.get('value')}\n"
-                    f"Preferred threshold: {gingival_assessment.get('threshold')}"
-                ),
-                "warning",
+                f"Increased gingival display observed ({gingival_assessment.get('value'):.3f} vs reference {gingival_assessment.get('threshold')}). Clinical evaluation advised.",
+                "warning"
             )
-
         else:
-
             add_interpretation(
                 "Gingival Display",
-                (
-                    "Gingival display is within the preferred reference range, with an "
-                    "appropriate amount of gum tissue visible during smiling."
-                ),
-                "good",
+                "Gingival display is within preferred reference limits with appropriate gingival exposure during smiling.",
+                "good"
             )
 
-        # ---------------------------------------------
         # Smile Arc
-        # ---------------------------------------------
-
-        if smile_arc_assessment.get("issue", False):
-
+        if smile_arc_assessment.get("issue", False) and smile_arc_assessment.get("severity") in ["Mild Concern", "Moderate Concern", "Significant Concern"]:
             recommendations.append(
-                "Clinical evaluation of the smile arc is recommended to determine whether orthodontic treatment could improve the relationship between the upper teeth and the lower lip during smiling."
+                "Clinical evaluation of smile arc curvature is suggested to assess anterior incisal curvature relative to lower lip contour."
             )
-
             add_interpretation(
                 "Smile Arc",
-                (
-                    "The smile arc differs from the preferred reference range, which may "
-                    "affect the overall harmony and aesthetic appearance of the smile.\n\n"
-                    f"Measured value: {smile_arc_assessment.get('value')}\n"
-                    f"Preferred threshold: {smile_arc_assessment.get('threshold')}"
-                ),
-                "warning",
+                f"Smile arc curvature variance observed ({smile_arc_assessment.get('value'):.3f} vs reference {smile_arc_assessment.get('threshold')}). Clinical review advised.",
+                "warning"
             )
-
         else:
-
             add_interpretation(
                 "Smile Arc",
-                (
-                    "The smile arc is within the preferred reference range, showing a "
-                    "harmonious relationship between the curvature of the upper teeth "
-                    "and the lower lip during smiling."
-                ),
-                "good",
+                "Smile arc is consonant and demonstrates ideal parabolic curvature relative to lower lip contour.",
+                "good"
             )
 
         # ---------------------------------------------
-        # Severity-Based Planning
+        # Overall Severity & Doctor-Assisting Guidance
         # ---------------------------------------------
 
         if severity == "Severe":
-
             priority = "High"
-
-            recommendations.append(
-                "Comprehensive orthodontic treatment planning strongly recommended."
-            )
-
-            recommendations.append(
-                "Detailed clinical evaluation and radiographic assessment advised."
-            )
-
+            recommendations.append("Comprehensive orthodontic clinical evaluation and diagnostic imaging are recommended.")
         elif severity == "Moderate":
-
             priority = "Medium"
-
-            recommendations.append(
-                "Orthodontic consultation recommended for smile correction planning."
-            )
-
+            recommendations.append("Elective orthodontic consultation is suggested for comprehensive smile planning.")
         elif severity == "Mild":
-
             priority = "Low-Medium"
+            recommendations.append("Minor aesthetic variation observed; elective clinical consultation may be considered based on patient preferences.")
+        else:  # Normal
+            priority = "Routine Observation"
+            recommendations.append("Evaluated smile features sit within standard clinical reference norms. Routine observation during regular dental check-ups is recommended.")
 
-            recommendations.append(
-                "Minor orthodontic or cosmetic adjustments may improve smile balance."
-            )
-
-        elif severity == "Normal":
-
-            priority = "Low"
-
-            recommendations.append(
-                "Smile aesthetics appear balanced with no major abnormalities detected."
-            )
+        # Always include doctor-assisting decision support disclaimer note
+        recommendations.append(
+            "Note for Clinicians: AI decision support findings are provided to assist in-person clinical evaluation. Diagnostic conclusions and treatment decisions remain solely under the discretion of the attending doctor."
+        )
 
         # ---------------------------------------------
         # Confidence Awareness

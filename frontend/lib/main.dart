@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_driver/driver_extension.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -11,73 +10,66 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/help/help_screen.dart';
 import 'services/theme_service.dart';
+import 'services/session_service.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/verify_otp_screen.dart';
 import 'screens/auth/reset_password_screen.dart';
 
 Future<void> main() async {
-  enableFlutterDriverExtension();
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService.instance.loadTheme();
-  runApp(const MyApp());
+  final bool loggedIn = await SessionService.isLoggedIn();
+  runApp(MyApp(initialRoute: loggedIn ? '/dashboard' : '/auth'));
 }
 
 class MyApp extends StatefulWidget {
-
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, this.initialRoute = '/auth'});
 
   @override
   State<MyApp> createState() => _MyAppState();
-
 }
 
 class _MyAppState extends State<MyApp> {
-
-  final ThemeService themeService =
-      ThemeService.instance;
+  final ThemeService themeService = ThemeService.instance;
 
   @override
   Widget build(BuildContext context) {
-
     return AnimatedBuilder(
-
       animation: themeService,
-
       builder: (context, child) {
-
         return MaterialApp(
-      title: 'Smile Analysis AI',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+          title: 'Smile Analysis AI',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
           themeMode: themeService.themeMode,
-      initialRoute: '/auth', // Default starting screen
-      routes: {
-        '/auth': (context) => const LoginScreen(),
-        '/forgot-password': (context) => const ForgotPasswordScreen(),
-        '/verify-otp': (context) => const VerifyOtpScreen(),
-        '/reset-password': (context) => const ResetPasswordScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/cases': (context) => const CasesScreen(),
-        '/analysis': (context) => const AnalysisScreen(),
-        '/reports': (context) {
+          initialRoute: widget.initialRoute,
+          routes: {
+            '/auth': (context) => const LoginScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
+            '/verify-otp': (context) => const VerifyOtpScreen(),
+            '/reset-password': (context) => const ResetPasswordScreen(),
+            '/register': (context) => const RegisterScreen(),
+            '/dashboard': (context) => const DashboardScreen(),
+            '/cases': (context) => const CasesScreen(),
+            '/analysis': (context) => const AnalysisScreen(),
+            '/reports': (context) {
+              final args =
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?;
 
-          final args =
-          ModalRoute.of(context)
-              ?.settings.arguments
-          as Map<String, dynamic>?;
-
-          return ReportsScreen(
-            analysisData: args,
-          );
-        },
-        '/profile': (context) => const ProfileScreen(),
-        '/settings': (context) => const SettingsScreen(),
-        '/help': (context) => const HelpScreen(),
+              return ReportsScreen(
+                analysisData: args,
+              );
+            },
+            '/profile': (context) => const ProfileScreen(),
+            '/settings': (context) => const SettingsScreen(),
+            '/help': (context) => const HelpScreen(),
+          },
+        );
       },
     );
-  },
-  );
+  }
 }
-}
+

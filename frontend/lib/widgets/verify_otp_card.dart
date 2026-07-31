@@ -10,12 +10,16 @@ class VerifyOtpCard extends StatelessWidget {
   final String email;
   final TextEditingController otpController;
   final VoidCallback onVerifyOtp;
+  final VoidCallback? onResendOtp;
+  final int resendCountdown;
 
   const VerifyOtpCard({
     super.key,
     required this.email,
     required this.otpController,
     required this.onVerifyOtp,
+    this.onResendOtp,
+    this.resendCountdown = 60,
   });
 
   @override
@@ -73,21 +77,47 @@ class VerifyOtpCard extends StatelessWidget {
               onPressed: onVerifyOtp,
             ),
             const SizedBox(height: 16),
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  'Back',
-                  style: TextStyle(
-                    color: ThemeColors.primary(context),
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Back',
+                    style: TextStyle(
+                      color: ThemeColors.primary(context),
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
+                if (resendCountdown > 0)
+                  Text(
+                    'Resend in ${resendCountdown}s',
+                    style: TextStyle(
+                      color: ThemeColors.secondaryText(context),
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  )
+                else
+                  TextButton(
+                    onPressed: onResendOtp,
+                    child: Text(
+                      'Resend OTP',
+                      style: TextStyle(
+                        color: ThemeColors.primary(context),
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),

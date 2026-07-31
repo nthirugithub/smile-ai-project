@@ -47,18 +47,27 @@ class _CasesScreenState extends State<CasesScreen> {
 
   Future<void> fetchReports() async {
     try {
-      final token = await SessionService.getAccessToken();
-      final response = await http.get(
-        Uri.parse('${ApiService.baseUrl}/reports'),
-        headers: {"Authorization": "Bearer $token"},
-      );
-      final data = jsonDecode(response.body);
-
+      final data = await ApiService.getPatients();
       if (!mounted) return;
-      setState(() {
-        reports = data['reports'] ?? [];
-        isLoading = false;
-      });
+      if (data['success'] == true && data['patients'] != null && (data['patients'] as List).isNotEmpty) {
+        setState(() {
+          reports = data['patients'];
+          isLoading = false;
+        });
+      } else {
+        // Fallback to reports list for legacy compatibility
+        final token = await SessionService.getAccessToken();
+        final response = await http.get(
+          Uri.parse('${ApiService.baseUrl}/reports'),
+          headers: {"Authorization": "Bearer $token"},
+        );
+        final repData = jsonDecode(response.body);
+        if (!mounted) return;
+        setState(() {
+          reports = repData['reports'] ?? [];
+          isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint(e.toString());
       if (!mounted) return;
@@ -229,129 +238,131 @@ class _CasesScreenState extends State<CasesScreen> {
 
   Widget buildPatientCard(dynamic item) {
     final isPhone = Responsive.isPhone(context);
-    final patientName = item["patient_name"] ?? "Unknown";
-    final createdAt = item["created_at"] ?? "";
-    final faceRatio = (double.tryParse(item["face_ratio"].toString()) ?? 0);
-    final scoreText = "${(faceRatio * 100).toStringAsFixed(0)}%";
+    final patientName = item["full_name"] ?? item["patient_name"] ?? "Unknown";
+    final patientCode = item["patient_code"] ?? item["patient_id"] ?? "P-${item["id"] ?? "000000"}";
+    final gender = item["gender"] ?? "";
+    final phone = item["phone_number"] ?? "";
+    final qual = item["qualification"] ?? "";
+    final severity = item["latest_severity"] ?? item["severity"] ?? "Normal";
+    final dateStr = item["last_analysis_date"] ?? item["created_at"] ?? "";
+    final totalReports = item["total_reports"] ?? 1;
 
-    if (isPhone) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: AppCard(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppIconContainer(
-                    icon: Icons.person_outline,
-                    size: AppIconSize.sm,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                patientName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.cardTitle(context),
+    AppChipVariant badgeVariant = AppChipVariant.info;
+    if (severity == 'Normal') {
+      badgeVariant = AppChipVariant.success;
+    } else if (severity == 'Mild') {
+      badgeVariant = AppChipVariant.warning;
+    } else if (severity == 'Moderate' || severity == 'Severe') {
+      badgeVariant = AppChipVariant.error;
+    }
+
+    final subDetails = [
+      if (gender.isNotEmpty) gender,
+      if (phone.isNotEmpty) 'Ph: $phone',
+      if (qual.isNotEmpty) qual,
+    ].join(' • ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        padding: EdgeInsets.all(isPhone ? 12 : 16),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppIconContainer(
+                  icon: Icons.person_outline,
+                  size: isPhone ? AppIconSize.sm : AppIconSize.md,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: ThemeColors.primary(context).withValues(alpha: 0.1),
+                              borderRadius: AppRadius.borderSm,
+                            ),
+                            child: Text(
+                              patientCode,
+                              style: AppTypography.caption(context).copyWith(
+                                color: ThemeColors.primary(context),
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            AppChip(
-                              label: 'Symmetry $scoreText',
-                              variant: AppChipVariant.success,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              patientName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.cardTitle(context),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (subDetails.isNotEmpty)
                         Text(
-                          createdAt,
+                          subDetails,
                           style: AppTypography.caption(context),
                         ),
-                      ],
-                    ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Last Analysis: ${dateStr.isEmpty ? "No scans yet" : dateStr}',
+                        style: AppTypography.caption(context).copyWith(
+                          color: ThemeColors.secondaryText(context),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              PrimaryButton(
-                label: 'Open Case',
-                icon: Icons.visibility_outlined,
-                fullWidth: true,
-                height: 38,
-                variant: PrimaryButtonVariant.outlined,
-                onPressed: () async {
-                  await ApiService.markReportReviewed(item["id"]);
-                  final report = await ApiService.getReportById(item["id"]);
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    AppChip(
+                      label: severity,
+                      variant: badgeVariant,
+                    ),
+                    const SizedBox(height: 6),
+                    AppChip(
+                      label: '$totalReports Report${totalReports == 1 ? "" : "s"}',
+                      variant: AppChipVariant.info,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            PrimaryButton(
+              label: 'Open Case Records',
+              icon: Icons.folder_open_outlined,
+              fullWidth: true,
+              height: 38,
+              variant: PrimaryButtonVariant.outlined,
+              onPressed: () async {
+                final reportId = item['reports'] != null && (item['reports'] as List).isNotEmpty
+                    ? item['reports'][0]['id']
+                    : item['id'];
+                if (reportId != null) {
+                  await ApiService.markReportReviewed(reportId);
+                  final report = await ApiService.getReportById(reportId);
                   if (!mounted) return;
                   Navigator.pushNamed(
                     context,
                     '/reports',
                     arguments: {"analysisData": report},
                   );
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            AppIconContainer(
-              icon: Icons.person_outline,
-              size: AppIconSize.md,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    patientName,
-                    style: AppTypography.cardTitle(context),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    createdAt,
-                    style: AppTypography.caption(context),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            AppChip(
-              label: 'Symmetry $scoreText',
-              variant: AppChipVariant.success,
-            ),
-            const SizedBox(width: 16),
-            PrimaryButton(
-              label: 'Open',
-              icon: Icons.visibility_outlined,
-              fullWidth: false,
-              height: 40,
-              variant: PrimaryButtonVariant.outlined,
-              onPressed: () async {
-                await ApiService.markReportReviewed(item["id"]);
-                final report = await ApiService.getReportById(item["id"]);
-                if (!mounted) return;
-                Navigator.pushNamed(
-                  context,
-                  '/reports',
-                  arguments: {"analysisData": report},
-                );
+                } else {
+                  Navigator.pushNamed(context, '/reports');
+                }
               },
             ),
           ],

@@ -1,4 +1,6 @@
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 class SessionService {
 
@@ -7,6 +9,7 @@ class SessionService {
     required String name,
     required String email,
     required String accessToken,
+    String? profileImage,
   }) async {
 
     final prefs =
@@ -35,7 +38,19 @@ class SessionService {
       'access_token',
       accessToken,
     );
+    if (profileImage != null) {
+      await prefs.setString(
+        'profile_image',
+        profileImage,
+      );
+    }
   }
+
+  static Future<String> getProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('profile_image') ?? '';
+  }
+
   static Future<String> getAccessToken() async {
 
     final prefs =
@@ -91,10 +106,16 @@ class SessionService {
   }
 
   static Future<void> logout() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+      await googleSignIn.disconnect();
+    } catch (_) {
+      // Ignore if google sign in is unsupported or not signed in
+    }
 
-    final prefs =
-    await SharedPreferences.getInstance();
-
+    final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }
+
 }

@@ -210,8 +210,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       newPassword: newPasswordController.text,
                     );
 
-                    if (!mounted) return;
-                    Navigator.pop(dialogContext);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
 
                     if (response['success']) {
                       messenger.showSnackBar(

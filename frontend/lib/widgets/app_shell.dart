@@ -167,15 +167,30 @@ class _AppShellState extends State<AppShell> {
                         label: item['severity'] ?? 'Normal',
                         variant: _getSeverityVariant(item['severity']),
                       ),
-                      onTap: () {
+                      onTap: () async {
                         _removeOverlay();
-                        Navigator.pushNamed(
-                          context,
-                          '/reports',
-                          arguments: {
-                            'analysisData': item,
-                          },
-                        );
+                        final navigator = Navigator.of(context);
+                        try {
+                          final reportId = item['id'];
+                          if (reportId != null) {
+                            final reportData = await ApiService.getReportById(reportId as int);
+                            if (!mounted) return;
+                            navigator.pushNamed(
+                              '/reports',
+                              arguments: {
+                                'analysisData': reportData,
+                              },
+                            );
+                          }
+                        } catch (e) {
+                          if (!mounted) return;
+                          navigator.pushNamed(
+                            '/reports',
+                            arguments: {
+                              'analysisData': item,
+                            },
+                          );
+                        }
                       },
                     );
                   },

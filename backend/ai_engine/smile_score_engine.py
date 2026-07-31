@@ -207,56 +207,57 @@ class SmileScoreEngine:
 
         quality_score = self._extract_quality_score(features, severity_analysis)
 
-        # 0–10 subscores, each based on a perceptual rule
+        # 0–10 subscores, each based on literature-backed perceptual rules
         feature_scores = {
             "smile_width": self._score_band(
                 smile_width,
-                ideal_min=0.46,
-                ideal_max=0.55,
-                hard_min=0.35,
-                hard_max=0.65,
+                ideal_min=0.420,
+                ideal_max=0.520,
+                hard_min=0.300,
+                hard_max=0.600,
             ),
             "lip_opening": self._score_band(
                 lip_opening,
-                ideal_min=0.06,
-                ideal_max=0.11,
-                hard_min=0.02,
-                hard_max=0.18,
+                ideal_min=0.040,
+                ideal_max=0.085,
+                hard_min=0.015,
+                hard_max=0.160,
             ),
             "face_ratio": self._score_band(
                 face_ratio,
-                ideal_min=0.82,
-                ideal_max=0.92,
-                hard_min=0.70,
-                hard_max=1.00,
+                ideal_min=1.150,
+                ideal_max=1.450,
+                hard_min=0.850,
+                hard_max=1.800,
             ),
             "midline_deviation": self._score_lower_better(
                 midline_deviation,
-                ideal_max=0.003,
-                hard_max=0.020,
+                ideal_max=0.015,
+                hard_max=0.045,
             ),
             "smile_symmetry": self._score_lower_better(
                 smile_symmetry,
-                ideal_max=0.010,
-                hard_max=0.050,
+                ideal_max=0.015,
+                hard_max=0.045,
             ),
-            "smile_arc": self._score_target(
+            "smile_arc": self._score_band(
                 smile_arc,
-                target=0.015,
-                ideal_tolerance=0.018,
-                hard_tolerance=0.060,
+                ideal_min=0.250,
+                ideal_max=0.400,
+                hard_min=0.000,
+                hard_max=0.450,
             ),
             "gingival_display": self._score_lower_better(
                 gingival_display,
-                ideal_max=0.010,
-                hard_max=0.050,
+                ideal_max=0.020,
+                hard_max=0.065,
             ),
             "buccal_corridor": self._score_band(
                 buccal_corridor,
-                ideal_min=0.25,
-                ideal_max=0.35,
-                hard_min=0.10,
-                hard_max=0.60,
+                ideal_min=0.100,
+                ideal_max=0.180,
+                hard_min=0.020,
+                hard_max=0.350,
             ),
         }
 
@@ -274,26 +275,19 @@ class SmileScoreEngine:
         core_score = self._weighted_average(core_scores, core_weights)
 
         # Blend overall harmony with the core perceptual signal
-        score = (0.68 * overall_score) + (0.32 * core_score)
+        score = (0.65 * overall_score) + (0.35 * core_score)
 
-        # Reliability adjustment:
-        # lower image quality reduces confidence in the visual estimate,
-        # but does not inflate the score.
-        score -= (1.0 - quality_score) * 0.9
+        # Reliability adjustment: lower image quality reduces score proportionally
+        score -= (1.0 - quality_score) * 0.5
 
-        # Weakest-link penalty:
-        # if one of the core aesthetic signals is poor, humans perceive it strongly.
+        # Weakest-link penalty: if a core aesthetic feature is severely deficient, apply a proportionate penalty
         weakest_core = min(core_scores.values()) if core_scores else 10.0
-        if weakest_core < 6.5:
-            score -= (6.5 - weakest_core) * 0.35
+        if weakest_core < 5.0:
+            score -= (5.0 - weakest_core) * 0.25
 
-        # Gentle compression near the upper end so 9.4 stays rare
-        # and only truly balanced smiles reach the cap.
-        if score > 8.8:
-            score -= (score - 8.8) * 0.18
+        # Final clamp to 1.0–9.8 scale
+        score = self._clamp(score, 1.0, 9.8)
 
-        # Final clamp to your current grading range
-        score = self._clamp(score, 4.0, 9.4)
 
         return {
             "smile_score": round(score, 2)

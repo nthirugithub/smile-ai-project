@@ -21,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String userName = 'User';
   String userEmail = '';
+  String userProfileImage = '';
   int totalCases = 0;
   int reportsGenerated = 0;
   double averageConfidence = 0.0;
@@ -78,6 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           regController.text = profile['registration_number'] ?? '';
           specializationController.text = profile['specialization'] ?? '';
           experienceController.text = (profile['experience'] ?? 0).toString();
+          userProfileImage = profile['profile_image'] ?? '';
 
           totalCases = stats['total_cases'] ?? 0;
           reportsGenerated = stats['reports_generated'] ?? 0;
@@ -215,14 +217,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     CircleAvatar(
                       radius: 24,
                       backgroundColor: ThemeColors.primary(context),
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage: userProfileImage.isNotEmpty
+                          ? NetworkImage(
+                              userProfileImage.startsWith('/')
+                                  ? '${ApiService.baseUrl}$userProfileImage'
+                                  : userProfileImage,
+                            )
+                          : null,
+                      child: userProfileImage.isEmpty
+                          ? Text(
+                              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -478,9 +489,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              item['patient_name'] ?? 'Patient Analysis',
-                              style: AppTypography.label(context),
+                            Builder(
+                              builder: (context) {
+                                final pName = item['patient_name'] ?? 'Patient Analysis';
+                                final pCode = item['patient_code'] ?? (item['patient_id'] != null ? 'P-${item['patient_id'].toString().padLeft(6, '0')}' : null);
+                                final titleText = pCode != null ? '$pName ($pCode)' : pName;
+
+                                return Text(
+                                  titleText,
+                                  style: AppTypography.label(context),
+                                );
+                              },
                             ),
                             Text(
                               '${item['severity'] ?? 'Analysis'} • ${item['created_at'] ?? ''}',

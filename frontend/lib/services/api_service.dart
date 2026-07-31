@@ -16,7 +16,7 @@ class ApiService {
     if (kIsWeb) {
       return 'http://127.0.0.1:5000';
     } else {
-      return 'http://10.0.2.2:5000';
+      return 'http://192.168.43.151:5000';
     }
   }
 
@@ -36,24 +36,23 @@ class ApiService {
   // ANALYZE SMILE
   // -----------------------------------
 
-  static Future<Map<String, dynamic>>
-  analyzeSmile(
-      Uint8List imageBytes,
-      String fileName,
-      int userId,
-      ) async {
-
+  static Future<Map<String, dynamic>> analyzeSmile(
+    Uint8List imageBytes,
+    String fileName,
+    int userId, {
+    int? patientId,
+  }) async {
     try {
-
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/predict'),
       );
       final token = await SessionService.getAccessToken();
 
-      request.headers['Authorization'] =
-      'Bearer $token';
-
+      request.headers['Authorization'] = 'Bearer $token';
+      if (patientId != null) {
+        request.fields['patient_id'] = patientId.toString();
+      }
 
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -64,22 +63,16 @@ class ApiService {
         ),
       );
 
-      request.headers['Accept'] =
-      'application/json';
+      request.headers['Accept'] = 'application/json';
 
-      var response =
-      await request.send().timeout(
+      var response = await request.send().timeout(
         const Duration(seconds: 60),
       );
 
-      var responseData =
-      await response.stream.bytesToString();
-
-      final decodedData =
-      jsonDecode(responseData);
+      var responseData = await response.stream.bytesToString();
+      final decodedData = jsonDecode(responseData);
 
       if (response.statusCode == 200) {
-
         return {
           'success': true,
           'data': decodedData,
@@ -88,17 +81,98 @@ class ApiService {
 
       return {
         'success': false,
-        'error':
-        decodedData['error'] ??
-            'Unknown server error',
+        'error': decodedData['error'] ?? 'Unknown server error',
       };
-
     } catch (e) {
-
       return {
         'success': false,
         'error': e.toString(),
       };
+    }
+  }
+
+  // -----------------------------------
+  // PATIENT MANAGEMENT APIs
+  // -----------------------------------
+
+  static Future<Map<String, dynamic>> createPatient(
+    Map<String, dynamic> data, {
+    bool forceCreate = false,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+      final bodyData = Map<String, dynamic>.from(data);
+      bodyData['force_create'] = forceCreate;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/patients'),
+        headers: headers,
+        body: jsonEncode(bodyData),
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updatePatient(
+    int patientId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/patients/$patientId'),
+        headers: headers,
+        body: jsonEncode(data),
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> deletePatient(int patientId) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/patients/$patientId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPatients({String? search}) async {
+    try {
+      final headers = await _authHeaders();
+      final uri = Uri.parse('$baseUrl/patients').replace(
+        queryParameters: search != null && search.isNotEmpty ? {'q': search} : null,
+      );
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'patients': []};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPatientById(int patientId) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/patients/$patientId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
     }
   }
 
@@ -169,15 +243,18 @@ class ApiService {
           'email': email,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 10));
 
       return jsonDecode(response.body);
 
     } catch (e) {
 
+      final isTimeout = e.toString().contains('TimeoutException');
       return {
         'success': false,
-        'error': 'Invalid credentials provided. Access denied.',
+        'error': isTimeout
+            ? 'Server request timed out. Please try again.'
+            : 'Unable to connect to server. Please verify your connection.',
       };
     }
   }
@@ -499,7 +576,7 @@ class ApiService {
 
     } catch (e) {
 
-      print(
+      debugPrint(
         "Mark reviewed error: $e",
       );
 
@@ -611,6 +688,94 @@ class ApiService {
 
     }
 
+  }
+
+  // -----------------------------------
+  // GOOGLE AUTHENTICATION
+  // -----------------------------------
+
+  static Future<Map<String, dynamic>> googleAuth({
+    required String idToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/google-auth'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'id_token': idToken,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+
+  // -----------------------------------
+  // UPLOAD PROFILE PICTURE
+  // -----------------------------------
+
+  static Future<Map<String, dynamic>> uploadProfilePicture({
+    required int userId,
+    required Uint8List imageBytes,
+    required String fileName,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/profile/$userId/picture'),
+      );
+
+      final token = await SessionService.getAccessToken();
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'picture',
+          imageBytes,
+          filename: fileName,
+        ),
+      );
+
+      var response = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+
+      var responseData = await response.stream.bytesToString();
+      return jsonDecode(responseData);
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // -----------------------------------
+  // DELETE PROFILE PICTURE
+  // -----------------------------------
+
+  static Future<Map<String, dynamic>> deleteProfilePicture(int userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/profile/$userId/picture'),
+        headers: await _authHeaders(),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
   }
 }
 

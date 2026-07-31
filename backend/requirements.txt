@@ -52,3 +52,5 @@ openpyxl==3.1.5
 pytest
 requests
 pytest-html
+google-auth>=2.29.0
+imbalanced-learn>=0.14.2
